@@ -1,11 +1,11 @@
 """
-Lumina LLM Gateway
+llm_gateway.py — Lumina LLM Gateway
 ═══════════════════════════════════════════════════════════════════════════
 PURPOSE
   The single seam between every engine file (extractor.py, lesson_engine.py,
   answer_engine.py, streaming_engine.py, routes.py) and whatever model
   provider is actually running underneath (OpenAI, or Fireworks-hosted
-  models). No engine file  import the openai SDK or build a client
+  models). No engine file should import the openai SDK or build a client
   directly — they all just call:
 
       from agents import llm_gateway as gateway
@@ -13,7 +13,7 @@ PURPOSE
       text = await gateway.complete("Explain the chain rule.")
       data = await gateway.complete_json([...messages...], system="...")
 
-  Swapping the model behind the whole app is one-line env var change
+  Swapping the model behind the whole app is then a one-line env var change
   (see CONFIGURATION below) — no engine file needs to change.
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -22,8 +22,8 @@ WHY TWO LAYERS OF ROUTING
   1. ALIASES   — logical task-tier names ("fast" / "default" / "reasoning")
                  that callers should request instead of hardcoding a vendor
                  model id. This is what actually makes the swap painless:
-                 flipping LLM_DEFAULT_MODEL from "Fire works" to a
-                 AMD-hosted model id moves every call site that used
+                 flipping LLM_DEFAULT_MODEL from "gpt-4o-mini" to a
+                 Fireworks-hosted model id moves every call site that used
                  "default" at once, with zero code edits.
 
   2. PREFIXES  — concrete model id → which SDK/provider serves it. Needed
@@ -41,32 +41,27 @@ CONFIGURATION (.env)
 
   FIREWORKS_API_KEY=fw_...                    # Fireworks-hosted models
   FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1   # default; only
-                                               # allows override for a dedicated
+                                               # override for a dedicated
                                                # deployment or account alias
 
-  VLLM_BASE_URL=http://<host>:8000/v1         # self-hosted vLLM instance
-                                               # (e.g. the AMD-GPU notebook
-                                               # running `vllm serve Qwen/Qwen3-14B`)
-  VLLM_API_KEY=EMPTY                          # vLLM doesn't check this by
-                                               # default; the OpenAI SDK just
-                                               # requires a non-empty string
-
-  LLM_DEFAULT_PROVIDER=firework_ai_api        # fallback when a model id's
+  LLM_DEFAULT_PROVIDER=openai                 # fallback when a model id's
                                               # prefix isn't recognised
-  LLM_FAST_MODEL=Qwen-3-14B              # alias: "fast"
-  LLM_DEFAULT_MODEL=Qwen-3.7-plus        # alias: "default"
-  LLM_REASONING_MODEL=Qwen-3.7-plus      # alias: "reasoning"
+  LLM_FAST_MODEL=gpt-4o-mini                  # alias: "fast"
+  LLM_DEFAULT_MODEL=gpt-4o-mini               # alias: "default"
+  LLM_REASONING_MODEL=gpt-4o-mini             # alias: "reasoning"
 
-  To move the whole app to a AMD-hosted model:
-    VLLM_BASE_URL=http://<host>:8000/v1    
+  To move the whole app to a Fireworks-hosted model:
+      LLM_DEFAULT_MODEL=accounts/fireworks/models/qwen3p7-plus
+      LLM_REASONING_MODEL=accounts/fireworks/models/qwen3p7-plus
+  The "accounts/fireworks/" prefix is what routes these to FireworksProvider
+  (see _PREFIX_TO_PROVIDER below) — no engine file changes here either.
 
   Qwen 3.7 Plus is a hybrid-reasoning model (thinking / non-thinking modes
   in one checkpoint). complete()/complete_json() accept an optional
-  `reasoning_effort` kwarg ("none" | "low" | "medium" | "high").
-  Self-hosted Qwen3 via vLLM doesn't accept a top-level `reasoning_effort` 
-  field at all — VLLMProvider translates it into vLLM's 
-  `chat_template_kwargs: {"enable_thinking": bool}` shape
-  internally, so call sites use the same kwarg either way.
+  `reasoning_effort` kwarg ("none" | "low" | "medium" | "high") that gets
+  forwarded straight into the request body — omit it and the model just
+  uses its default. Only pass it for models that actually support it
+  (Qwen 3.7 Plus does; gpt-4o-mini does not and will error if you send it).
 
 ═══════════════════════════════════════════════════════════════════════════
 ADDING A NEW PROVIDER
@@ -75,6 +70,7 @@ ADDING A NEW PROVIDER
   That's the entire surface area — nothing else in the file changes.
 ═══════════════════════════════════════════════════════════════════════════
 """
+
 from __future__ import annotations
 
 import json
