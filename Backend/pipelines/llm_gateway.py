@@ -75,7 +75,6 @@ ADDING A NEW PROVIDER
   That's the entire surface area — nothing else in the file changes.
 ═══════════════════════════════════════════════════════════════════════════
 """
-
 from __future__ import annotations
 
 import json
@@ -184,7 +183,7 @@ class OpenAIProvider(LLMProvider):
         )
 
 
-# Fireworks (hosted — Qwen 3.7 Plus)
+# Fireworks (hosted — Llama 4 Maverick)
 class FireworksProvider(LLMProvider):
     """
     Fireworks AI's managed inference API. OpenAI-compatible on the wire, so
@@ -238,69 +237,6 @@ class FireworksProvider(LLMProvider):
         )
 
 
-# ── Self-hosted vLLM (e.g. the AMD-GPU notebook) ────────────────────────
-class VLLMProvider(LLMProvider):
-    """
-    Self-hosted vLLM instance — OpenAI-compatible on the wire (vLLM exposes
-    /v1/chat/completions), so this reuses AsyncOpenAI pointed at
-    VLLM_BASE_URL instead of api.openai.com. vLLM doesn't check the API key
-    by default; the SDK still requires a non-empty string, hence "EMPTY".
-
-    IMPORTANT — thinking mode: unlike Fireworks' qwen3p7 (which accepts a
-    top-level `reasoning_effort` field), vLLM's OpenAI-compatible server
-    toggles Qwen3's hybrid thinking mode via
-    `extra_body={"chat_template_kwargs": {"enable_thinking": bool}}`.
-    complete() below does that translation so callers keep using the same
-    `reasoning_effort` kwarg regardless of provider. Also: if the vLLM
-    process wasn't launched with `--reasoning-parser qwen3`, an enabled
-    <think>...</think> block comes back inline inside message.content
-    rather than in a separate field — this is exactly why "qwen/" is
-    registered in _HYBRID_REASONING_MODEL_PREFIXES below, so
-    reasoning_effort defaults to "none" unless a caller opts in.
-    """
-    name = "vllm"
-
-    def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None):
-        from openai import AsyncOpenAI
-        self._base_url = base_url or os.getenv("VLLM_BASE_URL")
-        self._api_key = api_key or os.getenv("VLLM_API_KEY", "EMPTY")
-        self._client = (
-            AsyncOpenAI(api_key=self._api_key, base_url=self._base_url) if self._base_url else None
-        )
-
-    @property
-    def is_configured(self) -> bool:
-        return self._client is not None
-
-    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort=None) -> LLMResponse:
-        if not self._client:
-            raise LLMGatewayError("VLLM_BASE_URL not configured.")
-        full_messages = ([{"role": "system", "content": system}] if system else []) + messages
-        kwargs: Dict[str, Any] = dict(
-            model=model,
-            messages=full_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        if response_format == "json":
-            kwargs["response_format"] = {"type": "json_object"}
-        if reasoning_effort is not None:
-            # vLLM/Qwen3 has no top-level reasoning_effort field — thinking
-            # mode is a chat-template flag, passed through extra_body.
-            kwargs["extra_body"] = {
-                "chat_template_kwargs": {"enable_thinking": reasoning_effort != "none"}
-            }
-        resp = await self._client.chat.completions.create(**kwargs)
-        choice = resp.choices[0]
-        return LLMResponse(
-            text=choice.message.content or "",
-            provider=self.name,
-            model=model,
-            truncated=(choice.finish_reason == "length"),
-            raw=resp,
-        )
-
-
 # ════════════════════════════════════════════════════════════════════════
 # ROUTING — model name → provider  (see module docstring for rationale)
 # ════════════════════════════════════════════════════════════════════════
@@ -318,7 +254,6 @@ _PREFIX_TO_PROVIDER: List[Tuple[str, str]] = [
     ("o3",         "openai"),
     ("chatgpt-",   "openai"),
     ("accounts/fireworks/", "fireworks"),
-    ("qwen/",      "vllm"),
 ]
 
 DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "openai")
@@ -334,7 +269,6 @@ DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "openai")
 # adopt them.
 _HYBRID_REASONING_MODEL_PREFIXES: Tuple[str, ...] = (
     "accounts/fireworks/models/qwen3p7-",
-    "qwen/",
 )
 
 
@@ -524,7 +458,6 @@ if __name__ == "__main__":
     _PROBE_MODEL_FALLBACK: Dict[str, str] = {
         "openai":    "gpt-4o-mini",
         "fireworks": "accounts/fireworks/models/qwen3p7-plus",
-        "vllm":      "Qwen/Qwen3-14B",
     }
 
     def _probe_model_for(provider_name: str) -> Optional[str]:
@@ -542,7 +475,7 @@ if __name__ == "__main__":
             print(f"  alias={alias:<10} model={model:<24} provider={provider:<10} configured={ready}")
 
         configured = []
-        for name in ("openai", "fireworks", "vllm"):
+        for name in ("openai", "fireworks"):
             try:
                 if _get_provider(name).is_configured:
                     configured.append(name)
