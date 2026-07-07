@@ -411,6 +411,14 @@ export default function LessonPage({ onBack, courseData }) {
           }
         }
         else if (data.event === 'SECTION_END') {
+          // Insert a blank row so the next section starts on a fresh line
+          // instead of butting up against the last line of this one.
+          lineContentsRef.current = [...lineContentsRef.current, '']
+          setLineContents(lineContentsRef.current)
+          const spacerIdx = lineContentsRef.current.length - 1
+          setLines(prev => [...prev, { kind: 'spacer' }])
+          setClipPcts(prev => [...prev, 100])
+          setVisibleCount(spacerIdx + 1)
           setLuminaText('')
           await new Promise(r => setTimeout(r, 600))
         }
@@ -651,6 +659,17 @@ export default function LessonPage({ onBack, courseData }) {
           setLuminaLabel('LUMINA')
         }
         else if (data.event === 'SECTION_END') {
+          // Insert a blank row so the next section starts on a fresh line
+          // instead of butting up against the last line of this one.
+          const spacerId = explainLineIdCounterRef.current++
+          explainLineContentsRef.current = [...explainLineContentsRef.current, '']
+          explainLineIdsRef.current      = [...explainLineIdsRef.current, spacerId]
+          setExplainLineContents([...explainLineContentsRef.current])
+          setExplainLineIds([...explainLineIdsRef.current])
+          const spacerIdx = explainLineContentsRef.current.length - 1
+          setExplainLines(prev => [...prev, { kind: 'spacer' }])
+          setExplainClipPcts(prev => [...prev, 100])
+          setExplainVisibleCount(spacerIdx + 1)
           // Small inter-section breath (answers usually have one section).
           await new Promise(r => setTimeout(r, 300))
         }
@@ -1424,6 +1443,11 @@ export default function LessonPage({ onBack, courseData }) {
                       const isWriting  = line.kind === 'writing'
                       const isNote     = line.kind === 'annotation'
                       const annotation = boardAnnotations[lineContents[i]]
+
+                      if (line.kind === 'spacer') {
+                        return <div key={i} aria-hidden="true" style={{ width: '100%', height: 18 }} />
+                      }
+
                       return (
                         <div key={i} style={{
                           opacity: i < visibleCount ? 1 : 0,
@@ -1538,8 +1562,21 @@ export default function LessonPage({ onBack, courseData }) {
                     </div>
                   ) : (
                     <div style={ES.loadingState}>
-                      <div style={ES.loadingSpinner} />
-                      <span style={ES.loadingText}>Explaining…</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {[0, 1, 2].map(d => (
+                          <span key={d} style={{
+                            width: 9, height: 9, borderRadius: '50%',
+                            display: 'inline-block',
+                            animation: `explainStreamPulse 1.1s ${d * 0.16}s ease-in-out infinite`,
+                          }} />
+                        ))}
+                      </div>
+                      <style>{`
+                        @keyframes explainStreamPulse {
+                          0%, 100% { background: #ffffff; opacity: 0.35; transform: scale(0.7); box-shadow: none; }
+                          50%      { background: #b078ff; opacity: 1;    transform: scale(1.15); box-shadow: 0 0 8px rgba(176,120,255,0.7); }
+                        }
+                      `}</style>
                     </div>
                   )
                 ) : (
@@ -1553,6 +1590,10 @@ export default function LessonPage({ onBack, courseData }) {
                       const isWriting  = line.kind === 'writing'
                       const isNote     = line.kind === 'annotation'
                       const annotation = explainAnnotations[explainLineIds[i]]
+
+                      if (line.kind === 'spacer') {
+                        return <div key={i} aria-hidden="true" style={{ width: '100%', height: 18 }} />
+                      }
 
                       if (line.kind === 'divider') {
                         return (
