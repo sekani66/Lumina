@@ -157,7 +157,7 @@ class OpenAIProvider(LLMProvider):
     def is_configured(self) -> bool:
         return self._client is not None
 
-    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort='medium') -> LLMResponse:
+    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort=None) -> LLMResponse:
         if not self._client:
             raise LLMGatewayError("OPENAI_API_KEY not configured.")
         full_messages = ([{"role": "system", "content": system}] if system else []) + messages
@@ -361,8 +361,6 @@ def _get_provider(name: str) -> LLMProvider:
         return OpenAIProvider()
     if name == "fireworks":
         return FireworksProvider()
-    if name == "vllm":
-        return VLLMProvider()
     raise LLMGatewayError(f"Unknown LLM provider '{name}'.")
 
 
