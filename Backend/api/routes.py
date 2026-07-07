@@ -1,4 +1,165 @@
+"""
+Lumina Course Creation + Lesson Planning API
+═══════════════════════════════════════════════════════════════════════════════
+COURSE CREATION ENDPOINTS
 
+  POST /create/course/extract-pdf
+    Accepts a PDF upload. Runs the full extraction pipeline from extracting_engine.py:
+      PyMuPDF → text chunks → LLM lesson generator → structured course plan.
+    Returns extraction_meta (pre-fills topic/subject in Step 1), source_summary
+    (store this — it grounds all subsequent calls), and a preliminary_plan.
+
+  POST /create/course/prerequisites
+    Step 1 → Step 2 transition.
+    Given topic + goal (and optionally source_summary from a PDF upload),
+    returns 3–4 AI-identified prerequisite strength fields for Step 2.
+    PDF path: fields are grounded in the actual subject matter of the PDF.
+    AI path:  fields are inferred generically from topic + goal.
+
+  POST /create/course
+    Step 2 → Step 3 transition.
+    Generates the fully personalised course with per-lesson prerequisite
+    revision. Both paths converge here and return the same response schema
+    so the frontend renders Step 3 identically for both.
+
+LESSON PLANNING ENDPOINTS (lesson_engine.py)
+
+  POST /lesson/generate
+    Turns a single lesson stub from the course plan into a fully planned,
+    board-ready lesson — the four-level hierarchy that streaming_engine.py
+    executes directly: Lesson → Sections → Steps → Presentation Events
+    (SPEAK, WRITE, HIGHLIGHT, UNDERLINE, CIRCLE, ANNOTATE, ERASE, REVEAL,
+    PAUSE, AWAIT_RESPONSE), each event flagged sync_with_previous for
+    concurrent delivery (e.g. writing on the board while still talking).
+
+    STEM-first rule enforced: every CONCEPT_INTRODUCTION section is
+    immediately followed by 2–3 WORKED_EXAMPLE sections and a practice
+    section (GUIDED_PRACTICE / INDEPENDENT_PRACTICE).
+
+    This output is passed unchanged as `teaching_script` to
+    POST /stream/session/create — streaming_engine.py interprets it as the
+    lesson_engine format directly (the field name is kept only for backward
+    compatibility; see streaming_engine.py's module docstring).
+
+STREAMING ENDPOINTS (streaming_engine.py, lesson_engine format)
+
+  POST /stream/session/create
+    Creates a new streaming session from a lesson_engine lesson dict (and
+    optional pre-warmed question bank). Returns a session_id for all
+    subsequent calls.
+
+  GET  /stream/session/state?session_id=...
+    Returns a serializable snapshot of the session's current state
+    (current_section_index, current_step_index, total_sections, ...).
+
+  GET  /stream/lesson?session_id=...               [SSE]
+    Primary SSE stream. Delivers the lesson from the current position,
+    emitting typed events: SECTION_START/STEP_START structure events,
+    TEACHER_SAYS narration, BOARD_WRITE_START/APPEND/COMPLETE (or BOARD_WRITE
+    in non-sync mode), board annotation events (BOARD_HIGHLIGHT/UNDERLINE/
+    CIRCLE/ANNOTATE/ERASE/REVEAL), STEP_PAUSE, and LEARNER_CHECKPOINT.
+    Concurrent events (sync_with_previous: true) arrive interleaved — e.g.
+    board characters and speech words mixed together. Ends with LESSON_PAUSE
+    (if interrupted) or LESSON_COMPLETE (if finished).
+
+  POST /stream/pause
+    Sets the session's pause flag. The active stream detects the flag at
+    the next natural break and emits LESSON_PAUSE before closing. The
+    frontend then opens POST /answer/ask.
+
+  POST /stream/hand-raise
+    Signals a soft "raised hand" — does NOT cut delivery mid-word like
+    /stream/pause. Acknowledged in-stream (HAND_RAISE_ACK) at the next
+    group boundary, then promoted into a real LESSON_PAUSE (raised_as_hand:
+    true) once the current step finishes cleanly. Mirrors a real classroom:
+    the teacher finishes her thought, then turns to the learner.
+
+  POST /stream/hand-lower
+    Cancels a previously raised hand before it's promoted into a pause.
+    No-op (but safe) if never raised or already promoted.
+
+  GET  /stream/resume?session_id=...               [SSE]
+    Opens a new SSE stream after a confirmed Q&A (or a completed practice
+    attempt). Generates an LLM-produced bridge phrase (never a template,
+    wrapped in RESUME_BRIDGE begin/end events) then delegates back into the
+    GET /stream/lesson event stream from the stored position.
+
+  GET  /stream/sessions                            [admin]
+    Lists all in-memory sessions (lightweight summary).
+
+  DELETE /stream/session/{session_id}              [admin]
+    Evicts a single session from memory.
+
+  POST /stream/sessions/evict-stale               [admin]
+    Removes sessions idle longer than max_age_seconds (default 7200).
+
+ANSWER ENGINE ENDPOINTS (answer_engine.py)
+
+  POST /answer/anticipate
+    Pre-scans an entire teaching script and returns a question bank. Available
+    as a standalone utility, but the primary flow no longer requires calling
+    this before starting the lesson — /stream/session/create now fires
+    launch_background_anticipation() automatically (no blocking wait).
+
+  POST /answer/ask                                 ← primary Q&A endpoint
+    Manages the full Q&A lifecycle: initial answer, understanding check,
+    escalation to a new teaching approach, and confusion probing. The
+    frontend calls this on every turn, forwarding state from prior responses.
+    Turn 2+ must include probe_question, seconds_since_prompt, and
+    timeout_grace_used (all returned in the prior response) so the engine
+    can grade direct probe answers and honour the silence-timeout policy.
+
+  POST /answer/understand
+    Classifies a learner reply as CONFIRMED / UNCERTAIN / NOT_CONFIRMED.
+    Lightweight standalone call — also invoked internally by /answer/ask.
+
+  POST /answer/escalate
+    Generates a re-explanation using a completely different teaching approach
+    (ALGEBRAIC → ANALOGY → NUMERICAL → CONTRAST → BACKWARDS → STORY → VISUAL).
+    Returns an action envelope with an event-stream payload identical in shape
+    to a lesson section (SPEAK / WRITE / AWAIT_RESPONSE events).
+
+  POST /answer/probe
+    After MAX_EXAMPLES, generates a targeted probe to locate the learner's
+    exact confusion point, then produces a micro-explanation that addresses it.
+    Both turns return event-stream envelopes — same shape as lesson sections.
+
+═══════════════════════════════════════════════════════════════════════════════
+FULL FLOW
+
+  Course creation — AI path (no_source=True):
+    Step 1  → POST /create/course/prerequisites  { topic, goal }
+    Step 2  → (user rates prerequisites)
+    Step 3  → POST /create/course               { topic, goal, prerequisites }
+
+  Course creation — PDF path (no_source=False):
+    Step 1  → POST /create/course/extract-pdf   { file }
+                ↳ frontend stores source_summary + extraction_meta.inferred_title
+              → POST /create/course/prerequisites { topic, goal, source_summary }
+    Step 2  → (user rates prerequisites)
+    Step 3  → POST /create/course               { topic, goal, prerequisites,
+                                                  no_source=False, source_summary }
+
+  Lesson playback — full pipeline:
+    User clicks a lesson in Lesson.jsx( Lesson page with whiteboard lessons )
+              → POST /lesson/generate            { lesson stub + prerequisites }
+              → POST /stream/session/create      { teaching_script }
+                 ↳ returns session_id
+                 ↳ fires launch_background_anticipation(lesson) — no waiting
+              → GET  /stream/lesson?session_id=… [SSE — lesson begins immediately,
+                 question bank builds in the background]
+
+  Mid-lesson Q&A:
+    Learner types a question
+              → POST /stream/pause               { session_id, question }
+              → POST /answer/ask                 { question, active_segment, … }
+                 ↳ turns 2+: include examples_given, approaches_used, learner_response
+                 ↳ if NOT_CONFIRMED: POST /answer/escalate
+                 ↳ after MAX_EXAMPLES: POST /answer/probe
+              → (when understanding_status == CONFIRMED)
+              → GET  /stream/resume?session_id=… [SSE — bridge + continuation]
+═══════════════════════════════════════════════════════════════════════════════
+"""
 import asyncio
 import json
 import logging

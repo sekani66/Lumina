@@ -37,7 +37,7 @@ TIMEOUT POLICY  (new)
   and passes `seconds_since_prompt` — how long it has been since the last
   AWAIT_RESPONSE / understanding probe was issued — into handle_answer_session.
 
-    seconds_since_prompt >= CONFIRMATION_TIMEOUT_SECONDS  (default 45s)
+    seconds_since_prompt >= CONFIRMATION_TIMEOUT_SECONDS  (default 1min)
     and learner_response is blank
         │
         ├─ examples_given >= MAX_EXAMPLES_BEFORE_PROBE
@@ -128,10 +128,7 @@ docstring for the full event-type reference)
   using the SAME event types as a lesson section: SPEAK, WRITE, HIGHLIGHT,
   UNDERLINE, CIRCLE, ANNOTATE, ERASE, REVEAL, PAUSE, AWAIT_RESPONSE.
   The final step of any explanation always ends in exactly one
-  AWAIT_RESPONSE event — that IS the understanding probe. There is no
-  separate "understanding_probe" string field anymore; it is just another
-  event in the stream, so streaming_engine renders/times it exactly like a
-  GUIDED_PRACTICE prompt inside a normal lesson.
+  AWAIT_RESPONSE event — that IS the understanding probe. 
 
   Top-level envelope sent to the frontend for an in-progress explanation:
   {
@@ -272,10 +269,9 @@ class ProbeOutcome(str, Enum):
 # After this many escalation examples, stop adding more and probe instead
 MAX_EXAMPLES_BEFORE_PROBE: int = 3
 
-# How long we wait, in seconds, for a learner to respond to an understanding
-# probe before the timeout policy kicks in (see module docstring). Product
-# spec calls for "40 seconds to a minute" — 45s splits that window.
-CONFIRMATION_TIMEOUT_SECONDS: float = 45.0
+# How long we wait, minutes, for a learner to respond to an understanding
+# probe before the timeout policy kicks in (see module docstring). 
+CONFIRMATION_TIMEOUT_SECONDS: float = 2
 
 # Rotation order — first used on the initial answer, then cycled on escalation
 APPROACH_PROGRESSION: List[str] = [

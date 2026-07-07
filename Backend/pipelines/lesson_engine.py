@@ -7,8 +7,8 @@ Purpose:
   organised as: Lesson → Sections → Steps → Presentation Events.
 
   This engine handles PLANNING only.
-  The downstream streaming_engine is responsible for timing, board
-  animations, voice synthesis, and learner-interrupt handling.
+  The downstream streaming_engine is responsible for real time streaming, timing, board
+  animations, voice synthesis and learner-interrupt handling.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Architecture — four levels
@@ -112,7 +112,8 @@ Downstream wiring
 
   POST /lesson/generate  →  calls generate_lesson()
   streaming_engine.py receives the lesson plan and adds timing,
-  voice parameters, board animation keyframes, and interrupt-resume state.
+  voice parameters, board animation keyframes, real time 
+  lesson streaming and interrupt-resume state.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Schema returned by generate_lesson()
@@ -168,7 +169,6 @@ from prompts.lesson_plan_prompt import _LESSON_SYSTEM
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-
 SECTION_TYPES: frozenset[str] = frozenset({
     "INTRODUCTION",
     "PREREQUISITE_REVIEW",
@@ -200,7 +200,6 @@ _PRACTICE_TYPES: frozenset[str] = frozenset({
 })
 
 # ─── Prompt builder ───────────────────────────────────────────────────────────
-
 def _build_lesson_prompt(
     lesson_id:             str,
     lesson_title:          str,
@@ -401,7 +400,6 @@ def _build_lesson_prompt(
 
 
 # ─── Core generation function ─────────────────────────────────────────────────
-
 async def generate_lesson(
     *,
     lesson_id:             str,
@@ -424,9 +422,9 @@ async def generate_lesson(
     The returned lesson is hierarchically structured as:
         Lesson → Sections → Steps → Presentation Events
 
-    This plan is passed downstream to presentation_engine.py, which adds
-    timing, voice parameters, board animation keyframes, and interrupt-resume
-    state.  This function handles planning only.
+    This plan is passed downstream to streaming_engine.py, which does real time streaming
+    adds timing, voice parameters, board animation keyframes, and interrupt-resume state.  
+    This function handles planning only.
 
     Args:
         lesson_id:              e.g. "ch1_l2"
@@ -435,19 +433,19 @@ async def generate_lesson(
         prerequisite_revision:  String from the course plan lesson object
         description:            2–3 sentence description from the course plan
         subject:                e.g. "Mathematics"
-        grade_level:            e.g. "Grade 10"
+        grade_level:            e.g. "Grade 12"
         goal:                   "Ace Exams" | "Deep Mastery" | "Build Project" |
                                 "Pure Curiosity"
         weak_prerequisites:     Prerequisite labels rated ≤ 2 by the learner
-        source_context:         Optional slice of source_summary from extractor.py
+        source_context:         Optional slice of source_summary from extracticting_engine.py
         model:                  Logical alias ("fast" / "default" / "reasoning")
                                 or a literal vendor model id. Omit to use the
                                 gateway's configured default — see
-                                agents/llm_gateway.py for how that's set.
+                                pipelines/llm_gateway.py for how that's set.
 
     Returns:
         Parsed lesson dict matching the schema in the module docstring.
-        Pass to presentation_engine.generate_presentation() for delivery
+        Pass to streaming_engine.stream_lesson() for delivery
         enrichment.
 
     Raises:
@@ -538,7 +536,6 @@ async def generate_lesson(
 
 
 # ─── Schema validation ────────────────────────────────────────────────────────
-
 _PROBLEM_TITLE_SECTION_TYPES: frozenset[str] = frozenset({
     "PREREQUISITE_REVIEW",
     "GUIDED_PRACTICE",
@@ -659,12 +656,6 @@ def _convert_latex_annotations_to_writes(lesson: Dict) -> None:
     job, not ANNOTATE's — so reclassifying it is what the model should
     have done in the first place, not a fallback or a content mangle.
 
-    Downstream, streaming_engine._is_latex_content() already flags WRITE
-    content containing backslashes/carets/braces as render:"latex", and
-    the frontend already renders WRITE content through KaTeX — so this
-    is the only change needed to get these lines rendering correctly;
-    no frontend or streaming_engine changes required.
-
     Operates in-place on the lesson dict. Runs after _validate_lesson_schema
     (structure must be valid before we mutate it) and before the WRITE
     dedup passes below, so any newly-converted WRITE events are still
@@ -693,16 +684,6 @@ def _enforce_annotate_placement_rule(lesson: Dict) -> None:
     """
     Auto-repair pass: reclassify ANNOTATE events that occur before the
     last WRITE event in their section as WRITE events instead.
-
-    Why "before the last WRITE in the section" rather than "before the
-    last event in the step": ANNOTATE is only safe once the section's
-    board derivation is fully finished — a step boundary doesn't mean
-    the derivation is over, since later steps in the same section
-    routinely continue writing to the board (this is exactly what the
-    screenshot bug looked like: an ANNOTATE naming the LCM sat between
-    two steps that both still WRITE new equations). Judging placement
-    against the whole section, not just the current step, is what
-    correctly flags that case.
 
     Why repair rather than hard-fail like _validate_lesson_schema does:
     this content isn't malformed — it's genuine working content (e.g.
@@ -801,15 +782,6 @@ def _warn_missing_hook_opener(sections: List[Dict]) -> None:
     (the first SPEAK in the INTRODUCTION section) opens with one of the
     banned plan-announcement prefixes.
 
-    Note: INTRODUCTION no longer needs to be its OWN attention-grabbing
-    hook — an external lesson-opener system already delivers that live,
-    immediately before this section plays (see rule 7 / rule 16 in the
-    prompt). This check is narrower than the old "must be a hook" rule:
-    it only catches the flat, robotic plan-announcement openers that are
-    banned everywhere regardless ("We're going to...", "Today we will...").
-
-    This cannot be auto-repaired (rewriting the opener well requires actual
-    generation), so it only warns — same pattern as _warn_stem_ratio.
     """
     banned_prefixes = (
         "we're going to", "we are going to", "today, we are going to",
@@ -1166,7 +1138,6 @@ def _validate_lesson_schema(lesson: Dict) -> None:
 
 
 # ─── STEM-first soft validation ───────────────────────────────────────────────
-
 def _warn_stem_ratio(sections: List[Dict]) -> None:
     """
     Soft validation: logs warnings when STEM-first structural rules are violated
@@ -1174,10 +1145,10 @@ def _warn_stem_ratio(sections: List[Dict]) -> None:
 
     Rules checked:
       Rule 1 — Every CONCEPT_INTRODUCTION must be immediately followed by
-               ≥ 2 WORKED_EXAMPLE sections within the next 3 sections.
+               ≥ 1 WORKED_EXAMPLE sections within the next 3 sections.
 
       Rule 2 — Every WORKED_EXAMPLE cluster (the last WORKED_EXAMPLE in a
-               consecutive run) must be followed by ≥ 1 practice section
+               consecutive run) must be followed by ≥ 2 practice section
                (GUIDED_PRACTICE or INDEPENDENT_PRACTICE) within the next
                4 sections.
 

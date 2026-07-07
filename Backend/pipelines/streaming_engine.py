@@ -22,10 +22,6 @@ WHAT HAPPENS
   Input schema (from lesson_engine.generate_lesson()):
     lesson_engine output  →  { lesson_id, lesson_title, subject, sections: [...] }
 
-  The lesson is no longer called "teaching_script" inside this engine.  For backward
-  compatibility with routes.py, create_session() still accepts the dict under the
-  name `teaching_script`, but interprets it as the lesson_engine format.
-
 ═══════════════════════════════════════════════════════════════════════════════════════
 SYNCHRONISATION MODEL
 
@@ -108,7 +104,7 @@ LESSON STREAM STATES
   ERROR      Unrecoverable fault
 
 ═══════════════════════════════════════════════════════════════════════════════════════
-PAUSE / RESUME BEHAVIOUR  (unchanged from v1)
+PAUSE / RESUME BEHAVIOUR
 
   PAUSE  — POST /stream/pause sets session._pause_flag.  The active generator
            checks this flag between word-groups (SPEAK) and between steps.
@@ -201,7 +197,6 @@ from prompts.streaming_engine_prompts import (
 # ─────────────────────────────────────────────────────────────────────────────
 # ENUMS
 # ─────────────────────────────────────────────────────────────────────────────
-
 class LessonStreamState(str, Enum):
     IDLE       = "IDLE"
     STREAMING  = "STREAMING"
@@ -249,7 +244,7 @@ class StreamEventType(str, Enum):
     HEARTBEAT            = "HEARTBEAT"
     ERROR                = "ERROR"
 
-    # ── Legacy aliases (kept so routes.py doesn't need updating) ─────────────
+    # ── Legacy aliases ────────────────────────────────────────────────────────
     SEGMENT_START        = "SEGMENT_START"         # → SECTION_START
     SEGMENT_END          = "SEGMENT_END"           # → SECTION_END
     BOARD_LINE           = "BOARD_LINE"            # → BOARD_WRITE
@@ -271,7 +266,6 @@ class PauseReason(str, Enum):
 # ─────────────────────────────────────────────────────────────────────────────
 # DATACLASSES
 # ─────────────────────────────────────────────────────────────────────────────
-
 @dataclass
 class PauseContext:
     """
@@ -323,7 +317,7 @@ class StreamSession:
     Live state for one lesson delivery.  One session per active learner.
     Stored in _SESSIONS keyed by session_id.
 
-    teaching_script — now holds the lesson_engine output dict directly.
+    teaching_script — holds the lesson_engine output dict directly.
     current_segment_index — tracks the SECTION index (renamed in v2 but
                             field kept for backward compat with serialised state).
     current_step_index    — tracks the STEP index within the current section.
@@ -359,7 +353,7 @@ class StreamSession:
     pending_pause_reason:    Optional[PauseReason] = None
     pause_context:           Optional[PauseContext] = None
 
-    # Pre-warmed question bank (from answer_engine)
+    # Pre-warmed question bank (from answer_engine.py)
     question_bank:           Optional[Dict] = None
 
     # Timestamps
@@ -374,7 +368,7 @@ class StreamSession:
 
     # ── Raised-hand state ────────────────────────────────────────────────────
     # A "raised hand" is a soft signal: the learner wants attention, but the
-    # engine does NOT stop mid-word/mid-group like a real pause does. It is
+    # engine does NOT stop mid-word like a real pause does. It is
     # honoured at the very next GROUP boundary — the teacher finishes
     # whatever sentence/board-action is already in flight, then calls on
     # the learner right away, rather than finishing the rest of the step.
@@ -401,7 +395,6 @@ class StreamSession:
 # ─────────────────────────────────────────────────────────────────────────────
 # IN-MEMORY SESSION STORE
 # ─────────────────────────────────────────────────────────────────────────────
-
 _SESSIONS: Dict[str, StreamSession] = {}
 
 
@@ -442,7 +435,7 @@ BOARD_ACTION_DELAY_S:            float = 2.0   # Absorption pause when concurren
 BOARD_ACTION_STANDALONE_DELAY_S: float = 0.6   # Absorption pause when this action has NO
                                                # concurrent SPEAK — i.e. it is the only thing
                                                # happening, so this delay IS dead silence.
-                                               # Kept short: 3.0s of pure silence between
+                                               # Kept short: 0.6s of pure silence between
                                                # voice segments is what reads as an awkward,
                                                # robotic pause.
 
@@ -451,7 +444,7 @@ BOARD_ERASE_DELAY_S:        float = 1.0
 BOARD_REVEAL_DELAY_S:       float = 0.8
 
 # Silent PAUSE event
-SILENT_PAUSE_S:             float = 1.0    # Breathing room after board content
+SILENT_PAUSE_S:             float = 0.8    # Breathing room after board content
 
 # Turn-transition breathing room. A real teacher doesn't launch straight into
 # speaking the instant they decide to turn their attention — there's a small
@@ -507,14 +500,9 @@ def _remember_line(history: List[str], line: str) -> None:
 HEARTBEAT_INTERVAL_S:       float = 8.0
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # PRIVATE LANGUAGE-LEVEL HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
-# Model selection lives entirely in pipelines/llm_gateway.py — every
-# `model: Optional[str] = None` param in this file resolves through the
-# gateway's "default" alias when omitted, so there's no local default to
-# track here anymore.
 async def _llm(
     system:      str,
     user:        str,
@@ -585,15 +573,7 @@ async def _stream_spoken_narration(
 
     For the real-voice path, the pause flag is instead passed to
     voice_engine.stream_narration as `stop_check`, which only polls it
-    BETWEEN clauses. Previously this loop `return`ed the instant the flag
-    went true, even mid-clause — which threw GeneratorExit into
-    voice_engine's generator, cancelled its in-flight TTS task, and
-    silently dropped whatever PCM had already been generated but not yet
-    yielded. That's the "voice gets cut off" bug: AWAIT_RESPONSE (and any
-    other pause) could fire mid-word and truncate audio the learner was
-    already mid-way through hearing. Letting the current clause (a few
-    seconds, at most ~220 chars) finish before the pause takes effect
-    fixes that at the cost of a small, bounded delay.
+    BETWEEN clauses.
     """
     if not VOICE_NARRATION_ENABLED:
         async for chunk in _stream_text_chunks(text):
@@ -638,10 +618,6 @@ async def _stream_spoken_narration(
                     {"content": item["text"], "render": "none", "role": role, "step_index": step_idx},
                     sec_idx, sec_type, step_idx,
                 )
-                # Do NOT return here on pause — see docstring above.
-                # voice_engine's own stop_check will stop the NEXT
-                # clause from starting; this clause's audio+words still
-                # need to finish draining through this loop.
 
             elif kind == "audio":
                 yield _build_event(
@@ -662,7 +638,7 @@ async def _stream_spoken_narration(
                     sec_idx, sec_type, step_idx,
                 )
 
-    except Exception as exc:  # noqa: BLE001 — voice_engine itself failed to start;
+    except Exception as exc:  # noqa: BLE001 — voice_engine failed to start;
         # fall back so the lesson still narrates (silently) instead of dying.
         yield _build_event(
             StreamEventType.TEACHER_AUDIO_ERROR,
@@ -707,20 +683,8 @@ async def _stream_board_chars_synced(
     Char-by-char board reveal paced against the REAL, live speech clock
     (session.speak_progress) instead of one delay_s computed before either
     side had produced anything.
-
-    THE BUG THIS REPLACES: the old code computed a single shared_duration
-    upfront, from the same character-count word model voice_engine uses
-    internally — but that model no longer describes what SPEAK actually
-    does. voice_engine's real pacing clock is live TTS audio bytes, which
-    run faster or slower than the word-model estimate depending on the
-    voice's natural cadence, punctuation pauses, and clause merging. A
-    fixed delay_s derived from that estimate would drift from the real
-    audio over the course of a clause — the board would either finish
-    writing and sit idle while the voice kept talking, or still be
-    scratching away after the voice had already stopped. Both read as
-    "glitching" any time WRITE and SPEAK overlap.
-
-    THE FIX: every chunk, re-read how much real audio has ACTUALLY elapsed
+    
+    Every chunk, re-read how much real audio has ACTUALLY elapsed
     (session.speak_progress["elapsed_s"], driven by real bytes received —
     see voice_engine._speak_clause) and how much total narration time is
     estimated (session.speak_progress["total_estimate_s"]), then re-derive
@@ -750,7 +714,7 @@ async def _stream_board_chars_synced(
             # The paired speech has already finished — there's no live clock
             # left to sync against. Fall back to a fixed, natural writing
             # pace instead of racing to the floor and flashing the line in.
-            delay_s = SYNC_BOARD_WRITE_DELAY_S  # e.g. 0.15s, same as the non-synced writer
+            delay_s = SYNC_BOARD_WRITE_DELAY_S 
 
         yield text[written]
         written += 1
@@ -827,9 +791,9 @@ def _is_latex_content(text: str) -> bool:
 def _build_script_summary(lesson: Dict) -> str:
     """One-line lesson summary injected into LLM prompts for context."""
     return (
-        f"Lesson: {lesson.get('lesson_title', 'Unknown')} | "
-        f"Subject: {lesson.get('subject', 'General')} | "
-        f"Goal: {lesson.get('goal', 'Deep Mastery')}"
+        f"Lesson: {lesson.get('lesson_title', '')} | "
+        f"Subject: {lesson.get('subject', '')} | "
+        f"Goal: {lesson.get('goal', '')}"
     )
 
 
@@ -891,7 +855,7 @@ def _group_events_by_sync(events: List[Dict]) -> List[List[Dict]]:
     for event in events:
         ev_type = event.get("type")
         # ANNOTATE (and REVEAL) are isolated like AWAIT_RESPONSE/PAUSE: their
-        # Lesson.jsx handlers `await pushAndReveal(...)`, a real animated
+        # Lesson.jsx(lesson board page) handlers `await pushAndReveal(...)`, a real animated
         # reveal that runs for the full per-line pacing duration. If either
         # shares a concurrent group with a WRITE, the interleaved SSE stream
         # can deliver the ANNOTATE/REVEAL event first, and the frontend's
@@ -976,7 +940,6 @@ async def _interleave(*generators: AsyncGenerator) -> AsyncGenerator[Dict, None]
 # ─────────────────────────────────────────────────────────────────────────────
 # SINGLE EVENT DELIVERY
 # ─────────────────────────────────────────────────────────────────────────────
-
 async def _deliver_single_event(
     event:     Dict,
     session:   StreamSession,
@@ -1573,11 +1536,7 @@ async def _prefetch_delivery_plan(session: StreamSession) -> _LessonDeliveryPlan
 
     Fires asyncio.gather() over:
       • generate_lesson_opener()                   — 1 LLM call
-      • _generate_section_transition() × (N-1)    — N-1 concurrent LLM calls
-
-    For a 6-section lesson that is 5 calls that previously happened
-    sequentially mid-stream — now they resolve before the first SSE event,
-    in roughly the time of a single LLM call.
+      • _generate_section_transition() × (N-1)    — N-1 concurrent LLM calls.
 
     After this runs, stream_lesson() and _deliver_section() are pure event
     iterators — they read from the plan and never await LLM calls themselves.
@@ -1755,9 +1714,8 @@ async def stream_lesson(session_id: str) -> AsyncGenerator[Dict, None]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TRANSITION GENERATORS  (internal — not called directly from routes.py)
+# TRANSITION GENERATORS  (internal)
 # ─────────────────────────────────────────────────────────────────────────────
-
 async def _generate_section_transition(
     prev_section: Dict,
     next_section: Dict,
@@ -1906,7 +1864,7 @@ def pause_lesson(
     pause_reason: PauseReason   = PauseReason.QUESTION,
 ) -> Dict:
     """
-    Signal the active stream to pause.  Call this when the learner types a
+    Signal the active stream to pause.  Called  when the learner types a
     question mid-lesson (or when the frontend needs a manual pause).
 
     Sets session._pause_flag.  The active generator checks this flag between
@@ -1955,7 +1913,7 @@ def raise_hand(
     question:   Optional[str] = None,
 ) -> Dict:
     """
-    Signal a "raised hand" — a soft attention request.  Call this when the
+    Signal a "raised hand" — a soft attention request.  Called when the
     learner wants to ask something but the frontend UX is "raise hand"
     rather than "interrupt now" (e.g. tapping a hand icon while the
     teacher is mid-explanation).
@@ -2366,7 +2324,6 @@ async def resume_lesson(
     Resume an interrupted lesson after the learner has confirmed understanding
     (or completed an attempt for an AWAIT_RESPONSE pause).
 
-    This is a NEW SSE stream — the previous one ended with LESSON_PAUSE.
     The frontend opens this stream after answer_engine returns resume_lesson=True
     (or after the learner's attempt is acknowledged).
 
@@ -2400,13 +2357,6 @@ async def resume_lesson(
     session.state = LessonStreamState.RESUMING
 
     if is_await:
-        # The paused step already posed the problem (SPEAK + WRITE) and is
-        # done — its only remaining job was AWAIT_RESPONSE, which has now
-        # been satisfied. Resume from the NEXT step, not the start of the
-        # same one: _deliver_step() otherwise re-delivers the step from
-        # scratch on resume, re-emits the same problem WRITE, and hits
-        # AWAIT_RESPONSE again immediately, pausing forever on one problem.
-        # Must happen before the lookahead below.
         session.current_step_index += 1
         session.current_group_index = 0# new step, start from 1st group
 
@@ -2423,8 +2373,6 @@ async def resume_lesson(
     step_idx = session.current_step_index
 
     # ── 1. Grade the attempt, then resolve the bridge text ────────────────────
-    # current_step_index was already advanced above, so the default
-    # step_offset=0 here correctly points past the AWAIT_RESPONSE step.
     next_content = _find_next_content(session, last_write=True)
     grading = None
     # In resume_lesson(), change the grading call to:
@@ -2557,14 +2505,6 @@ async def stream_answer_envelope(session_id: str) -> AsyncGenerator[Dict, None]:
     # Save lesson resume pointers (see docstring above)
     saved_segment_index = session.current_segment_index
     saved_step_index    = session.current_step_index
-    # AWAIT_RESPONSE events (which every answer envelope ends with) set the
-    # pause flag and leave current_group_index pointing past the last group
-    # they delivered — the same field _deliver_section() reads as a resume
-    # offset for step_idx == start_step. Without saving/resetting it here,
-    # that leftover value from THIS envelope (or from the lesson's own
-    # original interruption) silently makes the NEXT envelope's first step
-    # skip every one of its groups — SECTION_START still fires (flipping the
-    # Lumina label) but no TEACHER_SAYS/BOARD_WRITE events ever follow.
     saved_group_index   = session.current_group_index
     session.current_group_index = 0
 
