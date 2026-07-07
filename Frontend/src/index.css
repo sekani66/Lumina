@@ -1,0 +1,43 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --chalk-green: #2a4a1e;
+  --chalk-green-light: #344d28;
+  --chalk-white: #f0ead6;
+  --chalk-dust: rgba(240, 234, 214, 0.12);
+  --paper-cream: #fdf6e3;
+  --paper-line: #c8d8e8;
+  --ink-dark: #1a1040;
+  --marker-red: #c0392b;
+  --gold: #c9a84c;
+  --board-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* KaTeX overrides — we render it hidden then steal its SVG */
+.katex-hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  top: -9999px;
+  left: -9999px;
+  font-size: 24px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
