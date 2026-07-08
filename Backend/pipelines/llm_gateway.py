@@ -285,8 +285,21 @@ class VLLMProvider(LLMProvider):
         # include the "/v1" suffix, since that's the path vLLM serves under.
         self._base_url = base_url or os.getenv("VLLM_BASE_URL")
         self._api_key = api_key or os.getenv("VLLM_API_KEY", "EMPTY")
+        # If the vLLM server sits behind JupyterLab's own auth-guarded proxy
+        # (e.g. jupyter-server-proxy on a hosted notebook), every request
+        # also needs the Jupyter server's own token — separate from
+        # VLLM_API_KEY above, which vLLM itself never checks. Without this,
+        # Jupyter's proxy 403s the request before it ever reaches vLLM.
+        jupyter_token = os.getenv("VLLM_JUPYTER_TOKEN")
+        default_headers = (
+            {"Authorization": f"token {jupyter_token}"} if jupyter_token else None
+        )
         self._client = (
-            AsyncOpenAI(api_key=self._api_key, base_url=self._base_url) if self._base_url else None
+            AsyncOpenAI(
+                api_key=self._api_key,
+                base_url=self._base_url,
+                default_headers=default_headers,
+            ) if self._base_url else None
         )
 
     @property
