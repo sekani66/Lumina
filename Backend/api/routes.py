@@ -654,8 +654,9 @@ async def lesson_generate(payload: LessonGenerateRequest):
             goal                  = payload.goal,
             weak_prerequisites    = payload.weak_prerequisites,
             source_context        = payload.source_context,
-            model                 = "reasoning",
+            model                 = payload.model,
         )
+        print(f"CREATE COURSE MODEL FROM ROUTES: {payload.model}")
     except RuntimeError as exc:
         print(f"Lesson_generate RuntimeError{exc}")
         raise HTTPException(status_code=500, detail=str(exc))
