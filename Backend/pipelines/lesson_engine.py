@@ -412,7 +412,7 @@ async def generate_lesson(
     goal:                  str,
     weak_prerequisites:    Optional[List[str]] = None,
     source_context:        Optional[str]       = None,
-    model:                 Optional[str]       = None
+    model:                 Optional[str]       = "reasoning"
 ) -> Dict:
     """
     Generate a fully structured lesson plan.
