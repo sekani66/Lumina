@@ -18,7 +18,7 @@ class PrerequisiteRequest(BaseModel):
     topic:          str
     goal:           str
     source_summary: Optional[str] = None   # populated from /extract-pdf response
-    model:          Optional[str] = None
+    model:          Optional[str] = 'fast'
 
 
 class CourseRequest(BaseModel):

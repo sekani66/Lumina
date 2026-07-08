@@ -22,17 +22,7 @@ class LessonGenerateRequest(BaseModel):
     goal:                  str                  = "Deep Mastery"
     weak_prerequisites:    Optional[List[str]]  = None
     source_context:        Optional[str]        = None
-    model:                 Optional[str]        = "reasoning"
+    model:                 Optional[str]        = 'reasoning'
 
 
-class LessonSegmentExplainRequest(BaseModel):
-    """
-    POST /lesson/segment/explain
-    Returns a deeper prose explanation for one segment.
-    segment should be the full segment dict from a /lesson/generate response.
-    """
-    segment:      Dict
-    lesson_title: str
-    subject:      str           = "General"
-    model:        Optional[str] = None
 
