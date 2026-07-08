@@ -44,6 +44,19 @@ CONFIGURATION (.env)
                                                # override for a dedicated
                                                # deployment or account alias
 
+  VLLM_BASE_URL=http://<host>:8000/v1         # self-hosted vLLM server —
+                                               # must be the URL this process
+                                               # can actually reach (an ssh
+                                               # tunnel/ngrok URL/public IP if
+                                               # the vLLM box isn't this one),
+                                               # and must include the "/v1"
+                                               # suffix, since that's the path
+                                               # vLLM serves under.
+  VLLM_API_KEY=EMPTY                           # optional — vLLM doesn't check
+                                               # this at all; any non-empty
+                                               # string works, "EMPTY" is just
+                                               # vLLM's own doc convention.
+
   LLM_DEFAULT_PROVIDER=openai                 # fallback when a model id's
                                               # prefix isn't recognised
   LLM_FAST_MODEL=gpt-4o-mini                  # alias: "fast"
@@ -55,6 +68,19 @@ CONFIGURATION (.env)
       LLM_REASONING_MODEL=accounts/fireworks/models/qwen3p7-plus
   The "accounts/fireworks/" prefix is what routes these to FireworksProvider
   (see _PREFIX_TO_PROVIDER below) — no engine file changes here either.
+
+  To move the whole app to your self-hosted vLLM instance instead:
+      LLM_DEFAULT_MODEL=Qwen/Qwen3-14B
+      LLM_REASONING_MODEL=Qwen/Qwen3-14B
+  The model id has to match vLLM's served_model_name exactly (whatever you
+  passed to --model, or --served-model-name if you set that) — check
+  GET {VLLM_BASE_URL}/models if unsure. The "qwen/" prefix is what routes
+  these to VLLMProvider (see _PREFIX_TO_PROVIDER below).
+
+  Qwen3 is also hybrid-reasoning (thinking / non-thinking in one checkpoint,
+  same as Qwen 3.7 Plus below) — the reasoning_effort notes further down
+  apply to it too, just translated to vLLM's own chat_template_kwargs wire
+  format instead of Fireworks'/OpenAI's reasoning_effort field.
 
   Qwen 3.7 Plus is a hybrid-reasoning model (thinking / non-thinking modes
   in one checkpoint). complete()/complete_json() accept an optional
@@ -233,6 +259,69 @@ class FireworksProvider(LLMProvider):
         )
 
 
+# ── vLLM (self-hosted, OpenAI-compatible) ───────────────────────────────
+class VLLMProvider(LLMProvider):
+    """
+    Self-hosted vLLM instance (`vllm.entrypoints.openai.api_server`).
+    OpenAI-compatible on the wire, same as Fireworks — reuses AsyncOpenAI
+    with a different base_url. Difference from Fireworks: vLLM doesn't
+    validate the API key at all, so any non-empty string works — we default
+    to "EMPTY", the placeholder vLLM's own docs use.
+
+    Qwen3 (and other hybrid-reasoning open checkpoints) don't understand
+    OpenAI's `reasoning_effort` field the way Fireworks-hosted Qwen 3.7 Plus
+    does — vLLM's native toggle for Qwen3's thinking mode is
+    `chat_template_kwargs: {"enable_thinking": bool}` passed via `extra_body`.
+    This provider translates the gateway's reasoning_effort into that shape
+    so callers don't need to know which wire format the model actually wants:
+    reasoning_effort="none" (or omitted) -> thinking off, anything else -> on.
+    """
+    name = "vllm"
+
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        from openai import AsyncOpenAI
+        # Point this at wherever the vLLM server is externally reachable,
+        # e.g. an ssh -L tunnel, an ngrok URL, or the host's public IP —
+        # include the "/v1" suffix, since that's the path vLLM serves under.
+        self._base_url = base_url or os.getenv("VLLM_BASE_URL")
+        self._api_key = api_key or os.getenv("VLLM_API_KEY", "EMPTY")
+        self._client = (
+            AsyncOpenAI(api_key=self._api_key, base_url=self._base_url) if self._base_url else None
+        )
+
+    @property
+    def is_configured(self) -> bool:
+        return self._client is not None
+
+    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort=None) -> LLMResponse:
+        if not self._client:
+            raise LLMGatewayError("VLLM_BASE_URL not configured.")
+        full_messages = ([{"role": "system", "content": system}] if system else []) + messages
+        kwargs: Dict[str, Any] = dict(
+            model=model,
+            messages=full_messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        if response_format == "json":
+            # vLLM honours this for models it can constrain via its
+            # structured-outputs backend; harmless no-op otherwise.
+            kwargs["response_format"] = {"type": "json_object"}
+        if reasoning_effort is not None:
+            kwargs["extra_body"] = {
+                "chat_template_kwargs": {"enable_thinking": reasoning_effort != "none"}
+            }
+        resp = await self._client.chat.completions.create(**kwargs)
+        choice = resp.choices[0]
+        return LLMResponse(
+            text=choice.message.content or "",
+            provider=self.name,
+            model=model,
+            truncated=(choice.finish_reason == "length"),
+            raw=resp,
+        )
+
+
 # ════════════════════════════════════════════════════════════════════════
 # ROUTING — model name → provider  (see module docstring for rationale)
 # ════════════════════════════════════════════════════════════════════════
@@ -250,6 +339,9 @@ _PREFIX_TO_PROVIDER: List[Tuple[str, str]] = [
     ("o3",         "openai"),
     ("chatgpt-",   "openai"),
     ("accounts/fireworks/", "fireworks"),
+    ("qwen/",      "vllm"),  # matches vLLM's served_model_name, e.g. "Qwen/Qwen3-14B".
+                             # Doesn't collide with Fireworks' Qwen 3.7 Plus, which is
+                             # addressed via the "accounts/fireworks/" prefix above.
 ]
 
 DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "openai")
@@ -265,6 +357,8 @@ DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "openai")
 # adopt them.
 _HYBRID_REASONING_MODEL_PREFIXES: Tuple[str, ...] = (
     "accounts/fireworks/models/qwen3p7-",
+    "qwen/",  # Qwen3 checkpoints served via vLLM are also hybrid-reasoning —
+              # same truncation risk if thinking is left on by default.
 )
 
 
@@ -291,6 +385,8 @@ def _get_provider(name: str) -> LLMProvider:
         return OpenAIProvider()
     if name == "fireworks":
         return FireworksProvider()
+    if name == "vllm":
+        return VLLMProvider()
     raise LLMGatewayError(f"Unknown LLM provider '{name}'.")
 
 
@@ -454,6 +550,7 @@ if __name__ == "__main__":
     _PROBE_MODEL_FALLBACK: Dict[str, str] = {
         "openai":    "gpt-4o-mini",
         "fireworks": "accounts/fireworks/models/qwen3p7-plus",
+        "vllm":      "Qwen/Qwen3-14B",
     }
 
     def _probe_model_for(provider_name: str) -> Optional[str]:
@@ -471,7 +568,7 @@ if __name__ == "__main__":
             print(f"  alias={alias:<10} model={model:<24} provider={provider:<10} configured={ready}")
 
         configured = []
-        for name in ("openai", "fireworks"):
+        for name in ("openai", "fireworks", "vllm"):
             try:
                 if _get_provider(name).is_configured:
                     configured.append(name)
