@@ -22,7 +22,7 @@ class LessonGenerateRequest(BaseModel):
     goal:                  str                  = "Deep Mastery"
     weak_prerequisites:    Optional[List[str]]  = None
     source_context:        Optional[str]        = None
-    model:                 Optional[str]        = None
+    model:                 Optional[str]        = "reasoning"
 
 
 class LessonSegmentExplainRequest(BaseModel):
