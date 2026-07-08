@@ -298,7 +298,7 @@ class VLLMProvider(LLMProvider):
     def is_configured(self) -> bool:
         return self._client is not None
 
-    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort='medium') -> LLMResponse:
+    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort: Optional[str] = None) -> LLMResponse:
         if not self._client:
             raise LLMGatewayError("VLLM_BASE_URL not configured.")
         full_messages = ([{"role": "system", "content": system}] if system else []) + messages
