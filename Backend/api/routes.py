@@ -560,6 +560,7 @@ async def create_course(payload: CourseRequest):
             max_tokens=5000,
             temperature=0.4,
         )
+    
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=500,

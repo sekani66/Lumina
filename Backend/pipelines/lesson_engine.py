@@ -412,7 +412,7 @@ async def generate_lesson(
     goal:                  str,
     weak_prerequisites:    Optional[List[str]] = None,
     source_context:        Optional[str]       = None,
-    model:                 Optional[str]       = None,
+    model:                 str                 = "reasoning"
 ) -> Dict:
     """
     Generate a fully structured lesson plan.
@@ -474,7 +474,7 @@ async def generate_lesson(
             system      = _LESSON_SYSTEM,
             max_tokens  = 16000,
             temperature = 0.3,
-            reasoning_effort="reasoning",
+            reasoning_effort="high",
         )
     except gateway.LLMGatewayError as exc:
         # Catch truncation before it becomes a cryptic JSON-parse error —
