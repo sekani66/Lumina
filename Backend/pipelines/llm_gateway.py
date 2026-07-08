@@ -332,24 +332,20 @@ class VLLMProvider(LLMProvider):
 # ════════════════════════════════════════════════════════════════════════
 
 ALIASES: Dict[str, str] = {
-    "fast":      os.getenv("LLM_FAST_MODEL", "gpt-4o-mini"),
-    "default":   os.getenv("LLM_DEFAULT_MODEL", "gpt-4o-mini"),
-    "reasoning": os.getenv("LLM_REASONING_MODEL", "gpt-4o-mini"),
+    "fast":      os.getenv("LLM_FAST_MODEL", "https://radeon-global.anruicloud.com/instances/hf-105-241c8d42/proxy/8000/v1"),
+    "default":   os.getenv("LLM_DEFAULT_MODEL", "accounts/fireworks/models/qwen3p7-plus"),
+    "reasoning": os.getenv("LLM_REASONING_MODEL", "accounts/fireworks/models/qwen3p7-plus"),
 }
 
 # Order matters: first matching prefix wins.
 _PREFIX_TO_PROVIDER: List[Tuple[str, str]] = [
-    ("gpt-",       "openai"),
-    ("o1",         "openai"),
-    ("o3",         "openai"),
-    ("chatgpt-",   "openai"),
     ("accounts/fireworks/", "fireworks"),
     ("qwen/",      "vllm"),  # matches vLLM's served_model_name, e.g. "Qwen/Qwen3-14B".
                              # Doesn't collide with Fireworks' Qwen 3.7 Plus, which is
                              # addressed via the "accounts/fireworks/" prefix above.
 ]
 
-DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "openai")
+DEFAULT_PROVIDER = os.getenv("LLM_DEFAULT_PROVIDER", "fireworks")
 
 # Hybrid-reasoning models that think by default unless told not to. gpt-4o-mini
 # never thought, so every call site written against it assumed the full
@@ -386,8 +382,6 @@ def _provider_for_model(model: str) -> str:
 def _get_provider(name: str) -> LLMProvider:
     """Providers are instantiated lazily and cached — you only pay the SDK
     import / client-construction cost for providers you actually call."""
-    if name == "openai":
-        return OpenAIProvider()
     if name == "fireworks":
         return FireworksProvider()
     if name == "vllm":
