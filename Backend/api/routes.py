@@ -643,6 +643,7 @@ async def lesson_generate(payload: LessonGenerateRequest):
     _assert_client()
 
     try:
+        print(f"CREATE COURSE MODEL FROM ROUTES: {payload.model}")
         result = await generate_lesson(
             lesson_id             = payload.lesson_id,
             lesson_title          = payload.lesson_title,
@@ -656,7 +657,7 @@ async def lesson_generate(payload: LessonGenerateRequest):
             source_context        = payload.source_context,
             model                 = payload.model,
         )
-        print(f"CREATE COURSE MODEL FROM ROUTES: {payload.model}")
+        
     except RuntimeError as exc:
         print(f"Lesson_generate RuntimeError{exc}")
         raise HTTPException(status_code=500, detail=str(exc))

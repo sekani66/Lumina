@@ -412,7 +412,7 @@ async def generate_lesson(
     goal:                  str,
     weak_prerequisites:    Optional[List[str]] = None,
     source_context:        Optional[str]       = None,
-    model:                 Optional[str]       = "reasoning"
+    model:                 Optional[str]       = None
 ) -> Dict:
     """
     Generate a fully structured lesson plan.
@@ -468,15 +468,16 @@ async def generate_lesson(
     )
 
     try:
+        print(f"CREATE COURSE MODEL: {model}")
         lesson = await gateway.complete_json(
             prompt,
             model       = model,
             system      = _LESSON_SYSTEM,
             max_tokens  = 16000,
             temperature = 0.3,
-            reasoning_effort="high",
+            reasoning_effort="medium",
         )
-        print(f"CREATE COURSE MODEL: {model}")
+        
     except gateway.LLMGatewayError as exc:
         # Catch truncation before it becomes a cryptic JSON-parse error —
         # the gateway already detects this generically; here we just attach
