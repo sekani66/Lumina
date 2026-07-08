@@ -447,6 +447,7 @@ async def get_course_prerequisites(payload: PrerequisiteRequest):
     Response: JSON array of { id, label } objects — the same shape the
     frontend uses to render Step 2 rating buttons.
     """
+    print(f"PREREQ MODEL: {payload.model}")
     if not payload.topic.strip():
         raise HTTPException(status_code=400, detail="Course topic is required.")
     if not payload.goal.strip():
@@ -525,6 +526,7 @@ async def create_course(payload: CourseRequest):
         "course_plan":    { course_name, goal, estimated_total_hours, chapters [...] }
     }
     """
+    print(f"CREATE COURSE MODEL{payload.model}")
     if not payload.topic.strip():
         raise HTTPException(status_code=400, detail="Course topic is required.")
     if not payload.goal.strip():
@@ -652,7 +654,7 @@ async def lesson_generate(payload: LessonGenerateRequest):
             goal                  = payload.goal,
             weak_prerequisites    = payload.weak_prerequisites,
             source_context        = payload.source_context,
-            model                 = payload.model,
+            model                 = "reasoning",
         )
     except RuntimeError as exc:
         print(f"Lesson_generate RuntimeError{exc}")
