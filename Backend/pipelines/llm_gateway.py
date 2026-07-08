@@ -1,5 +1,5 @@
 """
-llm_gateway.py — Lumina LLM Gateway
+Lumina LLM Gateway
 ═══════════════════════════════════════════════════════════════════════════
 PURPOSE
   The single seam between every engine file (extractor.py, lesson_engine.py,
@@ -205,7 +205,7 @@ class OpenAIProvider(LLMProvider):
         )
 
 
-# Fireworks (hosted — Llama 4 Maverick)
+# Fireworks (hosted — Qwen 3.7 plus)
 class FireworksProvider(LLMProvider):
     """
     Fireworks AI's managed inference API. OpenAI-compatible on the wire, so
@@ -280,16 +280,8 @@ class VLLMProvider(LLMProvider):
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         from openai import AsyncOpenAI
-        # Point this at wherever the vLLM server is externally reachable,
-        # e.g. an ssh -L tunnel, an ngrok URL, or the host's public IP —
-        # include the "/v1" suffix, since that's the path vLLM serves under.
         self._base_url = base_url or os.getenv("VLLM_BASE_URL")
         self._api_key = api_key or os.getenv("VLLM_API_KEY", "EMPTY")
-        # If the vLLM server sits behind JupyterLab's own auth-guarded proxy
-        # (e.g. jupyter-server-proxy on a hosted notebook), every request
-        # also needs the Jupyter server's own token — separate from
-        # VLLM_API_KEY above, which vLLM itself never checks. Without this,
-        # Jupyter's proxy 403s the request before it ever reaches vLLM.
         jupyter_token = os.getenv("VLLM_JUPYTER_TOKEN")
         default_headers = (
             {"Authorization": f"token {jupyter_token}"} if jupyter_token else None
@@ -306,7 +298,7 @@ class VLLMProvider(LLMProvider):
     def is_configured(self) -> bool:
         return self._client is not None
 
-    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort=None) -> LLMResponse:
+    async def complete(self, messages, *, model, system, max_tokens, temperature, response_format="text", reasoning_effort='medium') -> LLMResponse:
         if not self._client:
             raise LLMGatewayError("VLLM_BASE_URL not configured.")
         full_messages = ([{"role": "system", "content": system}] if system else []) + messages

@@ -474,6 +474,7 @@ async def generate_lesson(
             system      = _LESSON_SYSTEM,
             max_tokens  = 16000,
             temperature = 0.3,
+            reasoning_effort='high',
         )
     except gateway.LLMGatewayError as exc:
         # Catch truncation before it becomes a cryptic JSON-parse error —
