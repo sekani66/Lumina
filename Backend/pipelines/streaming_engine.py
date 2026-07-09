@@ -404,7 +404,7 @@ _SESSIONS: Dict[str, StreamSession] = {}
 
 # Speaking pace
 NARRATION_WORDS_PER_CHUNK:  int   = 1      # Words per TEACHER_SAYS event
-NARRATION_CHUNK_DELAY_S:    float = 1.80    # ≈ natural speaking pace — LEGACY FALLBACK ONLY,
+NARRATION_CHUNK_DELAY_S:    float = 1.40    # ≈ natural speaking pace — LEGACY FALLBACK ONLY,
                                             # used when voice narration is disabled or fails.
 
 # Real-voice narration (voice_engine.py).  When enabled, TEACHER_SAYS pacing
@@ -444,7 +444,7 @@ BOARD_ERASE_DELAY_S:        float = 1.0
 BOARD_REVEAL_DELAY_S:       float = 0.8
 
 # Silent PAUSE event
-SILENT_PAUSE_S:             float = 0.8    # Breathing room after board content
+SILENT_PAUSE_S:             float = 0.6    # Breathing room after board content
 
 # Turn-transition breathing room. A real teacher doesn't launch straight into
 # speaking the instant they decide to turn their attention — there's a small
@@ -456,7 +456,7 @@ HAND_ACK_BREATH_S:          float = 0.45   # Beat before turning to a raised han
 RESUME_BRIDGE_BREATH_S:     float = 0.70   # Beat before re-engaging after a Q&A digression
 
 # Inter-step and inter-section gaps
-BETWEEN_STEP_DELAY_S:       float = 0.8    # After STEP_END before next STEP_START
+BETWEEN_STEP_DELAY_S:       float = 0.6    # After STEP_END before next STEP_START
 BETWEEN_SECTION_DELAY_S:    float = 1.0    # Let SECTION_END land; board clears
 
 # Synchronized board reveal flag
