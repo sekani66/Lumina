@@ -152,6 +152,45 @@ export default function LessonPage({ onBack, courseData }) {
     return audioPlayerRef.current
   }
 
+  // ── Pause / resume (board + voice) ────────────────────────────────────────
+  // pausedRef gates the SSE processing queues for BOTH boards: every event
+  // handler (lesson SSE and answer SSE) awaits waitIfPaused() as its very
+  // first step, so once the in-flight event finishes, nothing further is
+  // written to either board and no further audio chunks are enqueued until
+  // resumeAll() runs. Already-buffered/playing audio is silenced directly
+  // via the player so pausing takes effect immediately, not just once the
+  // buffer drains.
+  const pausedRef        = useRef(false)
+  const resumeWaitersRef = useRef([])
+  const [boardPaused, setBoardPaused] = useState(false)
+
+  const waitIfPaused = () => {
+    if (!pausedRef.current) return Promise.resolve()
+    return new Promise(resolve => { resumeWaitersRef.current.push(resolve) })
+  }
+
+  const handleTogglePause = async () => {
+    const player = getAudioPlayer()
+    if (!pausedRef.current) {
+      pausedRef.current = true
+      setBoardPaused(true)
+      // Suspends the AudioContext clock — silences whatever's already
+      // playing immediately. New chunks won't be enqueued anyway since
+      // the SSE queues are gated on waitIfPaused() above.
+      await player.pause()
+    } else {
+      // Resume the audio clock first, then release the board — so the
+      // very next line/chunk the board writes lines up with audio that's
+      // actually flowing again, not a still-frozen context.
+      await player.resume()
+      pausedRef.current = false
+      setBoardPaused(false)
+      const waiters = resumeWaitersRef.current
+      resumeWaitersRef.current = []
+      waiters.forEach(fn => fn())
+    }
+  }
+
   // ── Right board refs ──────────────────────────────────────────────────────
   const answerEsRef            = useRef(null) // answer SSE connection (separate from lesson SSE)
   const explainBoardRef        = useRef(null)
@@ -381,7 +420,17 @@ export default function LessonPage({ onBack, courseData }) {
   }
 
   // ── openLessonSSE ─────────────────────────────────────────────────────────
+  const resumeInFlightRef = useRef(false)
+
   const openLessonSSE = (sid, isResume = false, resumeSummary = null) => {
+    if (isResume) {
+      if (resumeInFlightRef.current) {
+        console.warn(`Ignored duplicate resume call for session ${sid} — a resume is already in flight.`)
+        return
+      }
+      resumeInFlightRef.current = true
+    }
+
     let url = `${API_BASE}/stream/${isResume ? 'resume' : 'lesson'}?session_id=${sid}`
     if (isResume && resumeSummary) {
       url += `&answer_summary=${encodeURIComponent(JSON.stringify(resumeSummary))}`
@@ -397,6 +446,7 @@ export default function LessonPage({ onBack, courseData }) {
       try { data = JSON.parse(evt.data) } catch (e) { return }
 
       queue = queue.then(async () => {
+        await waitIfPaused()
         if (data.event === 'SECTION_START') {
           setActiveSegment(data.payload)
           const TYPE_LABEL = {
@@ -565,6 +615,10 @@ export default function LessonPage({ onBack, courseData }) {
           es.close(); esRef.current = null
           await getAudioPlayer().drain()
           setPlaying(false)
+          // Whatever resume call got us here has fully landed — release the
+          // guard so the next checkpoint's submit/dismiss isn't blocked by
+          // the previous one's in-flight flag.
+          resumeInFlightRef.current = false
 
           const isHandTurn      = !!data.payload?.raised_as_hand
           const isAwaitResponse = data.payload?.pause_reason === 'AWAIT_RESPONSE'
@@ -615,12 +669,25 @@ export default function LessonPage({ onBack, courseData }) {
         }
         else if (data.event === 'LESSON_COMPLETE') {
           es.close(); esRef.current = null
+          resumeInFlightRef.current = false
           setProgress(100); setPlaying(false); setDone(true)
           setCompletedLessons(prev => new Set([...prev, currentLessonRef.current?.globalIndex]))
         }
         else if (data.event === 'ERROR') {
           es.close(); esRef.current = null
+          resumeInFlightRef.current = false
           setPlaying(false)
+
+          if (data.payload?.code === 'ALREADY_RESUMED') {
+            // This connection is a stale duplicate — either the browser's
+            // own EventSource auto-reconnected after a dropped/slow-starting
+            // resume request, or a second tab already resumed this session.
+            // The lesson is already progressing fine elsewhere; there's
+            // nothing to show the learner and nothing to retry.
+            console.warn(`Ignoring stale resume connection for ${sid}: ${data.payload?.message}`)
+            return
+          }
+
           showError(data.payload?.message || 'Stream error occurred.', () => {
             setPlaying(true)
             openLessonSSE(sid, isResume, resumeSummary)
@@ -629,7 +696,20 @@ export default function LessonPage({ onBack, courseData }) {
       }).catch(err => console.error('Queue error:', err))
     }
 
-    
+    // Native connection-level failures (dropped connection, slow-start
+    // timeout, server restart) — NOT the same as an in-band ERROR event
+    // above. Without this handler, EventSource's default behavior is to
+    // silently reconnect using the exact same URL, which for a resume
+    // stream can re-invoke /stream/resume after the session has already
+    // moved past PAUSED (see ALREADY_RESUMED handling above). Closing here
+    // takes control away from that silent retry and surfaces one clear,
+    // user-actionable error instead of a stale duplicate request.
+    es.onerror = () => {
+      if (esRef.current !== es) return // already closed/replaced; ignore
+      es.close(); esRef.current = null
+      resumeInFlightRef.current = false
+      setPlaying(false)
+    }
   }
 
   // ── openAnswerSSE ─────────────────────────────────────────────────────────
@@ -652,6 +732,7 @@ export default function LessonPage({ onBack, courseData }) {
       try { data = JSON.parse(evt.data) } catch (e) { return }
 
       queue = queue.then(async () => {
+        await waitIfPaused()
 
         // ── Section / step lifecycle ────────────────────────────────────────
         if (data.event === 'SECTION_START') {
@@ -840,6 +921,13 @@ export default function LessonPage({ onBack, courseData }) {
       }).catch(err => console.error('Answer queue error:', err))
     }
 
+    // See the matching comment in openLessonSSE — without this, a dropped
+    // connection is silently retried by the browser instead of surfaced.
+    es.onerror = () => {
+      if (answerEsRef.current !== es) return
+      es.close(); answerEsRef.current = null
+      setExplainLoading(false)
+    }
   }
 
   // ── handleLearnerQuestion ─────────────────────────────────────────────────
@@ -1323,11 +1411,49 @@ export default function LessonPage({ onBack, courseData }) {
                Left : main lesson content  (independently scrollable)
                Right: Q&A / explanations   (independently scrollable)
           ─────────────────────────────────────────────────────────────────── */}
-          <div style={{
-            ...S.boardShell,
-            position: 'relative', display: 'flex', flexDirection: 'row',
-            padding: 0, overflow: 'hidden', gap: 0,
-          }}>
+          <div
+            className="lumina-board-shell"
+            style={{
+              ...S.boardShell,
+              position: 'relative', display: 'flex', flexDirection: 'row',
+              padding: 0, overflow: 'hidden', gap: 0,
+            }}
+          >
+            <style>{`
+              .lumina-pause-btn { opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+              .lumina-board-shell:hover .lumina-pause-btn { opacity: 1; pointer-events: auto; }
+            `}</style>
+
+            {/* ── Hover-to-reveal pause/resume — centered over the whole
+                 board (both panels). Pauses/resumes the active board
+                 stream(s) AND the teacher's voice together. Only shown
+                 while something is actually playing/streaming. ─────────── */}
+            {sourceMode === 'lesson' && loadingStage === null && !done && (playing || (explainVisible && explainLoading) || boardPaused) && (
+              <div className="lumina-pause-btn" style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)', zIndex: 30,
+              }}>
+                <button
+                  onClick={handleTogglePause}
+                  title={boardPaused ? 'Resume' : 'Pause'}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 56, height: 56, borderRadius: '50%',
+                    background: 'rgba(10,14,20,0.72)',
+                    border: '1px solid rgba(226,244,255,0.28)',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+                    backdropFilter: 'blur(6px)',
+                    cursor: 'pointer', color: 'rgba(226,244,255,0.92)',
+                  }}
+                >
+                  {boardPaused ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* ── LEFT PANEL — Lesson content ──────────────────────────── */}
             <div style={{
@@ -1477,9 +1603,9 @@ export default function LessonPage({ onBack, courseData }) {
                             borderRadius:       annotation === 'highlight' ? 4 : (annotation === 'circle' ? 6 : 0),
                             textDecoration:     annotation === 'underline' ? 'underline' : 'none',
                             textDecorationColor: annotation === 'underline' ? 'rgba(99,200,255,0.7)' : 'transparent',
-                            outline:            annotation === 'circle' ? '2px solid rgba(34, 49, 215, 0.9)' : 'none',
+                            outline:            annotation === 'circle' ? '2px solid rgb(255, 255, 255)' : 'none',
                             outlineOffset:      annotation === 'circle' ? 4 : 0,
-                            boxShadow:          annotation === 'circle' ? '0 0 10px rgba(240, 242, 243, 0.35)' : 'none',
+                            boxShadow:          annotation === 'circle' ? '0 0 10px rgb(240, 242, 243)' : 'none',
                           }}
                             dangerouslySetInnerHTML={{ __html: line.html + (isWriting ? '<span style="display:inline-block;width:1.5px;height:0.9em;background:currentColor;vertical-align:text-bottom;margin-left:2px;animation:blink 0.75s ease-in-out infinite alternate"></span>' : '') }}
                           />
@@ -1646,9 +1772,9 @@ export default function LessonPage({ onBack, courseData }) {
                             borderRadius:       annotation === 'highlight' ? 4 : (annotation === 'circle' ? 6 : 0),
                             textDecoration:     annotation === 'underline' ? 'underline' : 'none',
                             textDecorationColor: annotation === 'underline' ? 'rgba(185,120,255,0.7)' : 'transparent',
-                            outline:            annotation === 'circle' ? '2px solid rgba(210,150,255,0.9)' : 'none',
+                            outline:            annotation === 'circle' ? '2px solid rgb(255, 255, 255)' : 'none',
                             outlineOffset:      annotation === 'circle' ? 4 : 0,
-                            boxShadow:          annotation === 'circle' ? '0 0 10px rgba(210,150,255,0.35)' : 'none',
+                            boxShadow:          annotation === 'circle' ? '0 0 10px rgb(255, 255, 255)' : 'none',
                           }}
                             dangerouslySetInnerHTML={{ __html: line.html + (isWriting ? '<span style="display:inline-block;width:1.5px;height:0.9em;background:currentColor;vertical-align:text-bottom;margin-left:2px;animation:blink 0.75s ease-in-out infinite alternate"></span>' : '') }}
                           />
@@ -1670,42 +1796,9 @@ export default function LessonPage({ onBack, courseData }) {
                   </div>
                 )}
               </div>
-
-              {/* Follow-up input — pinned at bottom, enabled after ANSWER_COMPLETE */}
-              {explainVisible && (
-                <div style={ES.inputContainer}>
-                  <input
-                    type="text"
-                    value={explainInput}
-                    onChange={e => setExplainInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !explainLoading) {
-                        const v = explainInput.trim()
-                        if (v) { setExplainInput(''); handleExplainQuestion(v) }
-                      }
-                    }}
-                    placeholder={explainLoading ? 'Explaining…' : 'Got it / Still confused about…'}
-                    disabled={explainLoading}
-                    style={{ ...ES.inputField, opacity: explainLoading ? 0.5 : 1 }}
-                  />
-                  <button
-                    onClick={() => {
-                      const v = explainInput.trim()
-                      if (v && !explainLoading) { setExplainInput(''); handleExplainQuestion(v) }
-                    }}
-                    disabled={!explainInput.trim() || explainLoading}
-                    style={{
-                      ...ES.sendBtn,
-                      color:  explainInput.trim() && !explainLoading ? 'rgba(185,120,255,0.7)' : 'rgba(226,244,255,0.12)',
-                      cursor: explainInput.trim() && !explainLoading ? 'pointer' : 'default',
-                    }}
-                  >
-                    SEND →
-                  </button>
-                </div>
-              )}
             </div>
-            {/* ── end right panel ─────────────────────────────────────── */}
+            {/* ── end right panel — follow-up input migrated out of the board,
+                 see the dedicated Q&A input area below the split chalkboard ── */}
 
           </div>
           {/* ── end split chalkboard ──────────────────────────────────── */}
@@ -1878,6 +1971,66 @@ export default function LessonPage({ onBack, courseData }) {
               </button>
             </div>
           )}
+
+          {/* ── Q&A Explanations follow-up — migrated out of the right board
+               panel to live here as its own dedicated input area, same
+               pattern as the hand-raise and practice-attempt boxes above.
+               Shown whenever the Explain panel is open and waiting on the
+               learner (initial question already sent, or a follow-up after
+               ANSWER_COMPLETE). Deliberately gated on !explainLoading —
+               explainLoading flips true the instant a question is sent and
+               only flips back false on LEARNER_CHECKPOINT, ANSWER_COMPLETE,
+               or ERROR, i.e. the genuine "awaiting response" moments. This
+               keeps the box hidden for the whole time an answer is being
+               generated/streamed, not just while the panel is open. ────── */}
+          {explainVisible && !explainLoading && sourceMode === 'lesson' && (
+            <div style={{
+              marginTop: 10, padding: '8px 10px 8px 16px', borderRadius: 8,
+              background: 'rgba(185,120,255,0.10)', border: '1px solid rgba(185,120,255,0.35)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <input
+                type="text"
+                autoFocus
+                value={explainInput}
+                onChange={e => setExplainInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !explainLoading) {
+                    const v = explainInput.trim()
+                    if (v) { setExplainInput(''); handleExplainQuestion(v) }
+                  }
+                }}
+                placeholder={explainLoading ? 'Explaining…' : 'Got it / Still confused about…'}
+                disabled={explainLoading}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  color: 'rgba(226,244,255,0.90)',
+                  fontFamily: "'Crimson Pro', Georgia, serif",
+                  fontSize: 15, padding: '6px 2px',
+                  opacity: explainLoading ? 0.5 : 1,
+                }}
+              />
+              <button
+                onClick={() => {
+                  const v = explainInput.trim()
+                  if (v && !explainLoading) { setExplainInput(''); handleExplainQuestion(v) }
+                }}
+                disabled={!explainInput.trim() || explainLoading}
+                style={{
+                  background: 'none', border: 'none',
+                  color: explainInput.trim() && !explainLoading ? 'rgba(185,120,255,0.85)' : 'rgba(226,244,255,0.12)',
+                  cursor: explainInput.trim() && !explainLoading ? 'pointer' : 'default',
+                  fontSize: 12, fontWeight: 700,
+                  letterSpacing: '0.08em', padding: '6px 10px',
+                  flexShrink: 0, whiteSpace: 'nowrap',
+                }}
+                title="Send"
+              >
+                SEND →
+              </button>
+            </div>
+          )}
+
           {aiExplanation.length > 0 && visibleExplanations > 0 && (
             <div style={S.explanationBlock}>
               <div style={S.explanationHead}>

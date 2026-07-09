@@ -78,6 +78,30 @@ export class PCMAudioPlayer {
     }
   }
 
+  // Pause playback in place — suspends the AudioContext clock rather than
+  // tearing anything down. Every source is scheduled via source.start()
+  // relative to audioCtx.currentTime, so freezing that clock freezes
+  // everything at once: whatever's audibly playing stops immediately
+  // (the hardware output halts), and every source already scheduled
+  // ahead in the lookahead buffer simply waits, since the clock they
+  // were scheduled against is now frozen too. Nothing is discarded, so
+  // this is safe to call at any routine pause point — unlike stop(),
+  // which hard-closes the context and permanently drops anything
+  // scheduled ahead of currentTime.
+  async pause() {
+    if (this.audioCtx && this.audioCtx.state === 'running') {
+      await this.audioCtx.suspend();
+    }
+  }
+
+  // Resumes the AudioContext clock exactly where pause() left it —
+  // scheduled sources pick back up with no re-scheduling needed.
+  async resume() {
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      await this.audioCtx.resume();
+    }
+  }
+
   // Waits for audio that has ALREADY been scheduled (via enqueueChunk) to
   // actually finish playing, without cutting it off and without tearing
   // down the AudioContext — so playback can resume immediately the next
