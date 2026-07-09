@@ -2347,7 +2347,10 @@ async def resume_lesson(
     if session.state != LessonStreamState.PAUSED:
         yield _build_event(
             StreamEventType.ERROR,
-            {"message": f"Session {session_id} is not paused (state: {session.state.value})."},
+            {
+                "code":    "ALREADY_RESUMED",
+                "message": f"Session {session_id} is not paused (state: {session.state.value}).",
+            },
         )
         return
 

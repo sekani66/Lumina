@@ -1147,7 +1147,7 @@ async def classify_question(
     return await _llm_json(
         _CLASSIFY_SYSTEM, 
         prompt, 
-        model='fast', 
+        model=model, 
         temperature=0.1, 
         max_tokens=800
     )
@@ -1788,7 +1788,7 @@ async def probe_confusion_point(
     result = await _llm_json(
         _PROBE_SYSTEM, 
         prompt, 
-        model='fast', 
+        model=model, 
         temperature=0.3, 
         max_tokens=600
     )
@@ -1840,7 +1840,7 @@ async def generate_micro_explanation(
     result = await _llm_json(
         _MICRO_SYSTEM, 
         prompt, 
-        model='fast', 
+        model=model, 
         temperature=0.5, 
         max_tokens=1000
     )
@@ -1903,7 +1903,7 @@ async def _generate_confirmation_check_question(
     result = await _llm_json(
         _CONFIRM_CHECK_SYSTEM,
         prompt, 
-        model='fast', 
+        model=model, 
         temperature=0.5, 
         max_tokens=200
     )
