@@ -676,13 +676,17 @@ export default function LessonPage({ onBack, courseData }) {
           resumeInFlightRef.current = false
           setPlaying(false)
 
-          if (data.payload?.code === 'ALREADY_RESUMED') {
-            // This connection is a stale duplicate — either the browser's
-            // own EventSource auto-reconnected after a dropped/slow-starting
-            // resume request, or a second tab already resumed this session.
-            // The lesson is already progressing fine elsewhere; there's
-            // nothing to show the learner and nothing to retry.
-            console.warn(`Ignoring stale resume connection for ${sid}: ${data.payload?.message}`)
+          // Some backend signals arrive on the ERROR event but are not real
+          // failures — they're pause/hand-raise/answer-turn bookkeeping
+          // (stale duplicate connections, an in-flight AWAIT_RESPONSE pause,
+          // a hand-raise turn already being handled elsewhere, etc). None of
+          // these should ever surface as an error to the learner or offer a
+          // "retry" — there's nothing broken and nothing to redo.
+          const NON_FATAL_SIGNAL_CODES = [
+            'ALREADY_RESUMED', 'AWAIT_RESPONSE', 'HAND_RAISE_ACTIVE', 'PAUSE_ACTIVE',
+          ]
+          if (NON_FATAL_SIGNAL_CODES.includes(data.payload?.code)) {
+            console.warn(`Ignoring non-fatal signal (${data.payload?.code}) for ${sid}: ${data.payload?.message}`)
             return
           }
 
@@ -909,6 +913,19 @@ export default function LessonPage({ onBack, courseData }) {
         else if (data.event === 'ERROR') {
           es.close(); answerEsRef.current = null
           setExplainLoading(false)
+
+          // Mirror openLessonSSE's guard: an answer/ask turn transitioning
+          // (e.g. CONFIRMED handing back to the lesson stream, or a probe/
+          // hand-raise state settling) is not a failure and must never
+          // surface as one.
+          const NON_FATAL_SIGNAL_CODES = [
+            'ALREADY_RESUMED', 'AWAIT_RESPONSE', 'HAND_RAISE_ACTIVE', 'PAUSE_ACTIVE',
+          ]
+          if (NON_FATAL_SIGNAL_CODES.includes(data.payload?.code)) {
+            console.warn(`Ignoring non-fatal signal (${data.payload?.code}) for ${sid}: ${data.payload?.message}`)
+            return
+          }
+
           showError(data.payload?.message || 'Something went wrong getting that answer.', () => {
             setExplainLoading(true)
             openAnswerSSE(sid)
@@ -1351,53 +1368,10 @@ export default function LessonPage({ onBack, courseData }) {
             borderColor: backendOk === true  ? 'rgba(99,200,255,0.3)' : backendOk === false ? 'rgba(240,110,110,0.3)' : 'rgba(226,244,255,0.1)',
             background:  backendOk === true  ? 'rgba(99,200,255,0.05)' : backendOk === false ? 'rgba(240,110,110,0.05)' : 'transparent',
           }}>
-            {backendOk === true ? '● API CONNECTED' : backendOk === false ? '○ OFFLINE' : '· · ·'}
+            {backendOk === true ? '● LUMINA' : backendOk === false ? '○ LUMINA' : '· · ·'}
           </span>
         </div>
       </header>
-
-      {/* ── Error banner — surfaces stream/API failures with a retry action ── */}
-      {error && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 16, margin: '0 24px 12px', padding: '12px 18px',
-          borderRadius: 10, border: '1px solid rgba(240,110,110,0.35)',
-          background: 'rgba(240,110,110,0.08)', color: '#f4b9b9',
-          fontSize: 13, letterSpacing: '0.02em',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span style={{ display: 'flex', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            </span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{error}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {retryAction && (
-              <button
-                onClick={() => { const retry = retryAction; clearError(); retry() }}
-                style={{
-                  padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(240,110,110,0.4)',
-                  background: 'rgba(240,110,110,0.16)', color: '#f4b9b9', fontSize: 12,
-                  letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                Retry
-              </button>
-            )}
-            <button
-              onClick={clearError}
-              title="Dismiss"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 24, height: 24, borderRadius: 6, border: 'none',
-                background: 'transparent', color: '#f4b9b9', cursor: 'pointer',
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-        </div>
-      )}
 
       <div style={S.layout}>
 
@@ -1450,6 +1424,68 @@ export default function LessonPage({ onBack, courseData }) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                   )}
                 </button>
+              </div>
+            )}
+
+            {/* ── Error overlay — chalked onto the center of the board itself
+                 instead of a banner at the top of the screen. Covers both
+                 panels so it reads as "the board" pausing to show the
+                 problem, with Retry/Dismiss centered underneath the message.
+                 NOTE: this only ever reflects genuine failures — normal
+                 pause-driven transitions (AWAIT_RESPONSE, hand-raise state
+                 changes, answer/ask turns) never call showError; see the
+                 LESSON_PAUSE / HAND_RAISE_ACK / handleAskBackend branches. ── */}
+            {error && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(10,14,20,0.55)', backdropFilter: 'blur(2px)',
+              }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  gap: 18, maxWidth: 460, padding: '32px 40px', textAlign: 'center',
+                }}>
+                  <span style={{ display: 'flex', color: '#f4b9b9' }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                  </span>
+                  <p style={{
+                    margin: 0, fontFamily: "'Crimson Pro', Georgia, serif",
+                    fontSize: 19, lineHeight: 1.6,
+                    color: mode.text || '#e2f4ff',
+                    textShadow: `0 0 12px ${(mode.text || '#e2f4ff')}44`,
+                    letterSpacing: '0.01em',
+                  }}>
+                    {error}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                    {retryAction && (
+                      <button
+                        onClick={() => { const retry = retryAction; clearError(); retry() }}
+                        style={{
+                          padding: '9px 24px', borderRadius: 8,
+                          border: '1px solid rgba(99,200,255,0.4)',
+                          background: 'rgba(99,200,255,0.12)', color: '#63c8ff',
+                          fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+                          cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+                        }}
+                      >
+                        Retry
+                      </button>
+                    )}
+                    <button
+                      onClick={clearError}
+                      style={{
+                        padding: '9px 20px', borderRadius: 8,
+                        border: '1px solid rgba(226,244,255,0.15)',
+                        background: 'transparent', color: 'rgba(226,244,255,0.5)',
+                        fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
