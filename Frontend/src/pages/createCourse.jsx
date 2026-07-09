@@ -1,97 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { S, PARTICLES} from '../styles/createCourseStyles'
+import { S } from '../styles/createCourseStyles'
 import '../styles/createCourse.css';
+import { RATINGS, TYPE_COLORS, MAX_PDF_BYTES, MAX_PDF_MB } from '../constants/courseConstants';
+import { uploadPdf, fetchCoursePlan, fetchPrerequisites} from '../utils/createCourseHelpers';
 
-const RATINGS = [
-  { id: 1, label: 'Novice'    },
-  { id: 2, label: 'Familiar'  },
-  { id: 3, label: 'Confident' },
-  { id: 4, label: 'Master'    },
-]
-
-const TYPE_COLORS = {
-  Fundamentals:   { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24' },
-  'Core Concept': { bg: 'rgba(99,200,255,0.12)',  text: '#63c8ff' },
-  Advanced:       { bg: 'rgba(167,139,250,0.12)', text: '#a78bfa' },
-  Mastery:        { bg: 'rgba(52,211,153,0.12)',  text: '#34d399' },
-  Review:         { bg: 'rgba(251,113,133,0.12)', text: '#fb7185' },
-  Assessment:     { bg: 'rgba(251,146,60,0.12)',  text: '#fb923c' },
-}
-
-const MAX_PDF_MB  = 30
-const MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024
-const BASE_URL    = 'http://localhost:8000'
-
-// API helpers
-
-/**
- * POST /create/course/extract-pdf
- * Sends the raw PDF file via multipart/form-data.
- * Returns { extraction_meta, source_summary, preliminary_plan, key_concepts }
- */
-async function uploadPdf(file) {
-  const form = new FormData()
-  form.append('file', file)
-  // model is optional — backend defaults to gpt-4o-mini
-  const res = await fetch(`${BASE_URL}/create/course/extract-pdf`, {
-    method: 'POST',
-    body: form,
-    // Do NOT set Content-Type — browser sets it with the correct multipart boundary
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `PDF extraction failed (${res.status})`)
-  }
-  return res.json()
-}
-
-/**
- * POST /create/course/prerequisites
- * AI path  : { topic, goal }
- * PDF path : { topic, goal, source_summary }
- * Returns array of { id, label } prerequisite objects.
- */
-async function fetchPrerequisites({ topic, goal, sourceSummary }) {
-  const res = await fetch(`${BASE_URL}/create/course/prerequisites`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      topic,
-      goal,
-      ...(sourceSummary ? { source_summary: sourceSummary } : {}),
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Server error ${res.status}`)
-  }
-  return res.json()
-}
-
-/**
- * POST /create/course
- * AI path  : { topic, goal, no_source: true,  prerequisites }
- * PDF path : { topic, goal, no_source: false, prerequisites, source_summary }
- * Returns { course_details, prerequisites, course_plan }
- */
-async function fetchCoursePlan({ topic, goal, noSource, ratings, sourceSummary }) {
-  const res = await fetch(`${BASE_URL}/create/course`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      topic,
-      goal,
-      no_source:     noSource,
-      prerequisites: ratings,
-      ...(!noSource && sourceSummary ? { source_summary: sourceSummary } : {}),
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Server error ${res.status}`)
-  }
-  return res.json()
-}
+import { Spinner, ErrorIcon, UploadSpinner } from '../components/sharedComponents';
+import { PARTICLES } from '../constants/floatingParticles';
 
 // Component 
 export default function CreateCourse({ onNavigate, onBack }) {
@@ -824,40 +738,5 @@ export default function CreateCourse({ onNavigate, onBack }) {
         )}
       </div>
     </div>
-  )
-}
-
-// ─── Small shared components ──────────────────────────────────────────────────
-
-function Spinner() {
-  return (
-    <span style={{
-      display: 'inline-block', width: 16, height: 16,
-      border: '2px solid rgba(5,9,20,0.3)', borderTopColor: '#050914',
-      borderRadius: '50%', animation: 'spin 0.7s linear infinite',
-    }} />
-  )
-}
-
-// Spinner shown inside the upload zone and the button while extracting PDF
-function UploadSpinner({ small }) {
-  const sz = small ? 14 : 28
-  return (
-    <span style={{
-      display: 'inline-block', width: sz, height: sz,
-      border: `${small ? 2 : 3}px solid rgba(99,200,255,0.2)`,
-      borderTopColor: '#63c8ff',
-      borderRadius: '50%', animation: 'spin 0.9s linear infinite',
-    }} />
-  )
-}
-
-function ErrorIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
   )
 }

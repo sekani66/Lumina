@@ -1,4 +1,3 @@
-// ─── Board preview content options 
 export const LESSON_OPTIONS = [
     [
         { text: 'LESSON · Quadratic Equations',      color: 'rgba(99,200,255,0.5)', size: 10, mono: true },
@@ -28,3 +27,67 @@ export const LESSON_OPTIONS = [
         { text: 'Result:  f\'(x) = 3x² + 4',            color: '#63c8ff', size: 16, italic: true, gap: true },
     ]
 ]
+
+export const MODES = {
+    Chalk: {
+        board: '#2a4a1e', text: '#f0ead6', ui: '#f0ead6',
+        root: '#1a1a1a', frame: '#5a3e1b',
+        ruled: false, dusty: true,
+    },
+    Paper: {
+        board: '#fdf6e3', text: '#1a1040', ui: '#1a1040',
+        root: '#d8cfc0', frame: '#b8a888',
+        ruled: true, dusty: false,
+    },
+    Neon: {
+        board: '#04040f', text: '#00ffe7', ui: '#00ffe7',
+        root: '#010108', frame: '#003344',
+        ruled: false, dusty: false,
+    },
+    Gold: {
+        board: '#08080f', text: '#c9a84c', ui: '#c9a84c',
+        root: '#030307', frame: '#3a2808',
+        ruled: false, dusty: false,
+    },
+}
+
+export const PRESETS = [
+    {
+        category: 'Calculus',
+        items: [
+            { label: "Fundamental Theorem",  latex: "\\int_a^b f'(x)\\,dx = f(b) - f(a)" },
+        ]
+    },
+    {
+        category: 'Physics',
+        items: [
+            { label: "Gravitational Force",  latex: "F = G\\frac{m_1 m_2}{r^2}" },
+    ]
+    },
+    {
+        category: 'Engineering',
+        items: [
+            { label: "Convolution",          latex: "(f*g)(t) = \\int_{-\\infty}^{\\infty} f(\\tau)\\,g(t-\\tau)\\,d\\tau" },
+        ]
+    },
+    {
+        category: 'Statistics',
+        items: [
+            { label: "Normal Distribution",  latex: "f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}}\\,e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}" },
+        ]
+    },
+]
+
+// Speed → clip-reveal duration per line (ms).
+export const SPEEDS = { 
+    Slow: 9000, 
+    Normal: 1200, 
+    Fast: 500 
+}
+
+// Speed → server delay (seconds between SSE events)
+export const SSE_DELAYS = { 
+    Slow: 8.5, 
+    Normal: 1.2, 
+    Fast: 0.5 
+}

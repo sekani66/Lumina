@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 
 import { PARTICLES } from '../constants/floatingParticles'
-import { FEATURES, STEPS, SUBJECTS, NAV_LINKS } from '../constants/features'
-import { LESSON_OPTIONS } from '../constants/lessonOptions'
-import { Styles } from '../constants/defaultStyles'
+import { FEATURES, STEPS, SUBJECTS, NAV_LINKS } from '../constants/defaultPageConstants'
+import { LESSON_OPTIONS } from '../constants/lessoPageConstants'
+import { Styles } from '../styles/defaultStyles'
 
 
 export default function DefaultPage({ onNavigate }) {

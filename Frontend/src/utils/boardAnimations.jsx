@@ -1,6 +1,5 @@
 import katex from "katex"
 
-
 export function renderLine(latex) {
   try {
     return {

@@ -32,7 +32,7 @@ If you don't have Node.js: https://nodejs.org (download the LTS version)
 
 ```bash
 # 1. Navigate into the project folder
-cd math-annotator
+cd Lumina
 
 # 2. Install dependencies (~30 seconds)
 npm install

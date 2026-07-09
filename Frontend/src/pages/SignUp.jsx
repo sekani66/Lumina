@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react'
-
-// ─── Floating particles (different arrangement from SignIn) ───────────────────
-const PARTICLES = [
-  { char: '∇', x: '8%',  y: '10%', size: 76, delay: '0s',   dur: '9s'  },
-  { char: 'θ', x: '88%', y: '15%', size: 56, delay: '1.1s', dur: '7s'  },
-  { char: 'Δ', x: '92%', y: '58%', size: 64, delay: '0.6s', dur: '10s' },
-  { char: '∫', x: '4%',  y: '65%', size: 50, delay: '2.0s', dur: '8s'  },
-  { char: 'ℏ', x: '50%', y: '90%', size: 44, delay: '1.7s', dur: '9s'  },
-  { char: 'π', x: '76%', y: '82%', size: 42, delay: '0.9s', dur: '7s'  },
-  { char: 'λ', x: '22%', y: '92%', size: 38, delay: '3.0s', dur: '8s'  },
-  { char: 'Σ', x: '68%', y: '4%',  size: 50, delay: '2.3s', dur: '6s'  },
-]
+import { PARTICLES } from '../constants/floatingParticles'
 
 // ─── Step 2 data ──────────────────────────────────────────────────────────────
 const LEVELS = [

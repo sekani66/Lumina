@@ -132,11 +132,3 @@ export const S = {
     letterSpacing: '0.04em', textAlign: 'center', transition: 'color 0.2s', padding: '4px 0',
   },
 }
-export const PARTICLES = [
-    { char: '∇', x: '8%',  y: '10%', size: 76, delay: '0s',   dur: '9s'  },
-    { char: 'θ', x: '88%', y: '15%', size: 56, delay: '1.1s', dur: '7s'  },
-    { char: 'Δ', x: '92%', y: '58%', size: 64, delay: '0.6s', dur: '10s' },
-    { char: '∫', x: '4%',  y: '65%', size: 50, delay: '2.0s', dur: '8s'  },
-    { char: 'ℏ', x: '50%', y: '90%', size: 44, delay: '1.7s', dur: '9s'  },
-    { char: 'π', x: '76%', y: '82%', size: 42, delay: '0.9s', dur: '7s'  },
-  ]

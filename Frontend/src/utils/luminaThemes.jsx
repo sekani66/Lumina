@@ -1,5 +1,3 @@
-// src/utils/luminaTheme.js
-
 const THEMES = {
   'COMMON ERROR': {
     labelColor: 'rgba(255,150,90,0.80)',

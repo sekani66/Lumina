@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 import '../styles/authStyles.css'
-import { MODES } from '../constants/modes'
-import { SPEEDS, SSE_DELAYS } from '../constants/speeds'
 import { S, LOADING_STAGES, EXPLAIN_STYLES as ES } from '../styles/lessonPageStyles'
-import { PARTICLES } from '../styles/createCourseStyles'
-import { PRESETS } from '../constants/presets'
+import { PARTICLES } from '../constants/floatingParticles'
 import '../styles/lessonPage.css'
 
+import { PRESETS, SPEEDS, SSE_DELAYS, MODES, LESSON_OPTIONS } from '../constants/lessoPageConstants'
 
 import { getLuminaTheme } from '../utils/luminaThemes'
 import { parseLatexLines, revealLine, renderLine, renderTextLine } from '../utils/boardAnimations'
@@ -18,7 +16,7 @@ import {
   useLessonPause,
 } from './SlidingExplainBoard'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 
 // ════════════════════════════════════════════════════════════════════════════
