@@ -332,7 +332,7 @@ class VLLMProvider(LLMProvider):
 # ════════════════════════════════════════════════════════════════════════
 
 ALIASES: Dict[str, str] = {
-    "fast":      os.getenv("LLM_FAST_MODEL", "https://radeon-global.anruicloud.com/instances/hf-105-241c8d42/proxy/8000/v1"),
+    "fast":      os.getenv("LLM_FAST_MODEL", "Qwen/Qwen3-14B"),
     "default":   os.getenv("LLM_DEFAULT_MODEL", "accounts/fireworks/models/qwen3p7-plus"),
     "reasoning": os.getenv("LLM_REASONING_MODEL", "accounts/fireworks/models/qwen3p7-plus"),
 }

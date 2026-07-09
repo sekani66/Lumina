@@ -475,7 +475,7 @@ async def generate_lesson(
             system      = _LESSON_SYSTEM,
             max_tokens  = 16000,
             temperature = 0.3,
-            reasoning_effort="medium",
+            reasoning_effort=None,
         )
         
     except gateway.LLMGatewayError as exc:

@@ -527,6 +527,7 @@ async def create_course(payload: CourseRequest):
     }
     """
     print(f"CREATE COURSE MODEL{payload.model}")
+
     if not payload.topic.strip():
         raise HTTPException(status_code=400, detail="Course topic is required.")
     if not payload.goal.strip():
@@ -643,7 +644,6 @@ async def lesson_generate(payload: LessonGenerateRequest):
     _assert_client()
 
     try:
-        print(f"CREATE COURSE MODEL FROM ROUTES: {payload.model}")
         result = await generate_lesson(
             lesson_id             = payload.lesson_id,
             lesson_title          = payload.lesson_title,
@@ -655,7 +655,7 @@ async def lesson_generate(payload: LessonGenerateRequest):
             goal                  = payload.goal,
             weak_prerequisites    = payload.weak_prerequisites,
             source_context        = payload.source_context,
-            model                 = payload.model,
+            model                 = None,
         )
         
     except RuntimeError as exc:

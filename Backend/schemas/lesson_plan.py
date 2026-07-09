@@ -25,4 +25,3 @@ class LessonGenerateRequest(BaseModel):
     model:                 Optional[str]        = 'reasoning'
 
 
-

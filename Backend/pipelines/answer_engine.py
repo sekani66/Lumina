@@ -432,32 +432,6 @@ def _extract_probe_question(steps: List[Dict]) -> Optional[str]:
                 return event.get("content")
     return None
 
-
-async def _llm(
-    system: str,
-    user: str,
-    model: Optional[str] = None,
-    temperature: float = 0.5,
-    max_tokens: int = 900,
-) -> str:
-    """Single-call helper wrapping the LLM gateway."""
-    try:
-        return await gateway.complete(
-            user,
-            model=model,
-            system=system,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-    except gateway.LLMGatewayError as exc:
-        if "truncated" in str(exc).lower():
-            raise RuntimeError(
-                "Answer engine response was truncated (response exceeded "
-                "max_tokens). Reduce max_tokens or simplify the prompt and retry."
-            ) from exc
-        raise RuntimeError(str(exc)) from exc
-
-
 async def _llm_json(
     system: str,
     user: str,
@@ -1171,7 +1145,11 @@ async def classify_question(
         f"ACTIVE SECTION:\n{_format_section_context(active_section)}"
     )
     return await _llm_json(
-        _CLASSIFY_SYSTEM, prompt, model=model, temperature=0.1, max_tokens=800
+        _CLASSIFY_SYSTEM, 
+        prompt, 
+        model='fast', 
+        temperature=0.1, 
+        max_tokens=800
     )
 
 
@@ -1808,7 +1786,11 @@ async def probe_confusion_point(
         f"LESSON: {_build_lesson_summary(lesson)}"
     )
     result = await _llm_json(
-        _PROBE_SYSTEM, prompt, model=model, temperature=0.5, max_tokens=600
+        _PROBE_SYSTEM, 
+        prompt, 
+        model='fast', 
+        temperature=0.3, 
+        max_tokens=600
     )
     steps = result.get("steps", [])
     steps = _sanitize_steps(steps) 
@@ -1856,7 +1838,11 @@ async def generate_micro_explanation(
         f"{_format_board_state(board_state)}"
     )
     result = await _llm_json(
-        _MICRO_SYSTEM, prompt, model=model, temperature=0.6, max_tokens=1000
+        _MICRO_SYSTEM, 
+        prompt, 
+        model='fast', 
+        temperature=0.5, 
+        max_tokens=1000
     )
     steps = result.get("steps", [])
     steps = _sanitize_steps(
@@ -1915,7 +1901,11 @@ async def _generate_confirmation_check_question(
         f"LESSON: {_build_lesson_summary(lesson)}"
     )
     result = await _llm_json(
-        _CONFIRM_CHECK_SYSTEM, prompt, model=model, temperature=0.6, max_tokens=200
+        _CONFIRM_CHECK_SYSTEM,
+        prompt, 
+        model='fast', 
+        temperature=0.5, 
+        max_tokens=200
     )
     check_question = result.get("check_question")
     if not check_question or not isinstance(check_question, str) or _is_blank(check_question):

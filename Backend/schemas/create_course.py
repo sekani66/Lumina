@@ -18,7 +18,7 @@ class PrerequisiteRequest(BaseModel):
     topic:          str
     goal:           str
     source_summary: Optional[str] = None   # populated from /extract-pdf response
-    model:          Optional[str] = 'fast'
+    model:          Optional[str] = None
 
 
 class CourseRequest(BaseModel):
@@ -29,7 +29,7 @@ class CourseRequest(BaseModel):
     # values = rating integers 1–4
     prerequisites:  Dict[str, int]   = {}
     source_summary: Optional[str]    = None   # populated from /extract-pdf response
-    model:          str = 'reasoning'
+    model:          Optional[str]    = None
 
     @field_validator("prerequisites")
     @classmethod
