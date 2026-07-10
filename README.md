@@ -80,15 +80,15 @@ not just in an LLM's discretion.
          ┌──────────────┴──────────────┐                                │
          ▼                             ▼                                │
     ┌─────────────────┐      ┌───────────────────────┐                  │
-    │ Digital Board    │      │Voice Narration        │                  │
-    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                 │
-    │  render)         │      │ audio clock drives     │                 │
-    │                  │      │ word-by-word reveal)   │                 │
+    │ Digital Board    │      │Voice Narration        │                 │
+    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                │
+    │  render)         │      │ audio clock drives     │                │
+    │                  │      │ word-by-word reveal)   │                │
     └─────────────────┘      └───────────────────────┘                  │
             │                             │                             │
             └──────────────┬──────────────┘                             │
                            ▼                                            │
-                        Student                                        │
+                        Student                                         │
                            │                                            │
                            ▼                                            │
                   ┌───────────────────┐                                 │
