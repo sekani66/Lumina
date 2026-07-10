@@ -1,0 +1,39 @@
+services:
+  # Backend API (FastAPI)
+  - type: web
+    name: lumina-api
+    runtime: python
+    plan: free
+    rootDir: Backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"          # tighten to your frontend's Render URL once deployed
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Set these manually in the Render dashboard (they're in your local
+      # Backend/.env, which is gitignored and won't be picked up automatically):
+      #   FIREWORKS_API_KEY
+      #   FIREWORKS_BASE_URL      (optional, defaults to Fireworks' own endpoint)
+      #   VLLM_BASE_URL           (must be reachable from Render, e.g. a public
+      #                            IP/tunnel to your AMD box, including "/v1")
+      #   VLLM_API_KEY            (optional, vLLM doesn't validate it)
+      #   LLM_DEFAULT_PROVIDER, LLM_FAST_MODEL, LLM_DEFAULT_MODEL, LLM_REASONING_MODEL
+
+  # Frontend (Vite + React static build)
+  - type: web
+    name: lumina-frontend
+    runtime: static
+    rootDir: Frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Point the frontend at the deployed backend URL — Lesson.jsx reads
+      # import.meta.env.VITE_API_BASE (falls back to localhost:8000 if unset)
+      - key: VITE_API_BASE
+        value: https://lumina-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
