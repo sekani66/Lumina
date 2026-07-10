@@ -37,7 +37,7 @@ TIMEOUT POLICY  (new)
   and passes `seconds_since_prompt` — how long it has been since the last
   AWAIT_RESPONSE / understanding probe was issued — into handle_answer_session.
 
-    seconds_since_prompt >= CONFIRMATION_TIMEOUT_SECONDS  (default 1min)
+    seconds_since_prompt >= CONFIRMATION_TIMEOUT_SECONDS  (default 2 min)
     and learner_response is blank
         │
         ├─ examples_given >= MAX_EXAMPLES_BEFORE_PROBE
@@ -72,7 +72,7 @@ ARCHITECTURE
                              │                                            │
                              ▼                                            ▼
               launch_background_anticipation(lesson)        STREAMING STARTS IMMEDIATELY
-                 (asyncio.create_task — fire and forget,        (no waiting on the bank)
+                 (asyncio.create_task — fire and forget,        (no waiting on the question bank)
                   never awaited before the lesson starts)
                              │
                              ▼
@@ -489,9 +489,9 @@ async def _llm_json(
 
 _INLINE_MATH_RE = re.compile(
     r'(?:'
-    r'\d+\s*x\s*\^?\s*\d+'   # 4x^2, 3x2
+    r'\d+\s*x\s*\^?\s*\d+'    # 4x^2, 3x2
     r'|x\s*\^+\s*\d+'         # x^3
-    r'|\\frac\{'               # LaTeX fraction
+    r'|\\frac\{'              # LaTeX fraction
     r'|P\s*\(x\)\s*='         # P(x) = ...
     r'|\d+\s*x\b'             # 5x (lone term)
     r')',
@@ -507,8 +507,6 @@ _EQUATION_FILLER_LEAD_RE = re.compile(
     r'imagine|suppose)\s+',
     re.IGNORECASE,
 )
-
-
 def _extract_equation_clauses(text: str) -> List[str]:
     """
     Best-effort extraction of full equation-like clauses from natural
@@ -613,8 +611,6 @@ def _merge_board_state(board_state: Optional[List[str]], steps: List[Dict]) -> L
 
 
 _STANDALONE_NUMBER_RE = re.compile(r'(?<![\w.])\d+(?:\.\d+)?(?![\w])')
-
-
 def _find_ungrounded_probe_numbers(steps: List[Dict], known_text: str) -> List[str]:
     """
     Best-effort detection of a hypothetical numeric value introduced only
@@ -740,7 +736,6 @@ _WRITE_NARRATIVE_WORDS = {
 # Where a clean expression conventionally begins: an identifier (optionally
 # with a function call like f(x)) immediately followed by "=".
 _EXPR_START_RE = re.compile(r"[A-Za-z]\w*(?:\([^)]*\))?\s*=")
-
 
 def _split_narrative_prefix(content: str) -> "tuple[Optional[str], str]":
     """
@@ -1033,7 +1028,6 @@ def _sanitize_steps(steps: List[Dict], prior_board_keys: Optional[set] = None) -
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC FUNCTIONS
 # ─────────────────────────────────────────────────────────────────────────────
-
 async def anticipate_questions(
     lesson: Dict,
     model: Optional[str] = None,
