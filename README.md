@@ -262,7 +262,7 @@ VITE_API_BASE=http://localhost:8000
 > your first push — and rotate any key that has ever been shared,
 > screenshotted, or uploaded anywhere outside your own machine.
 
-### 5. Start a self-hosted AMD model server
+### 5. gitStart a self-hosted AMD model server
 
 fast tier running on your own AMD Instinct
 
