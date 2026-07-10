@@ -80,20 +80,20 @@ not just in an LLM's discretion.
          ┌──────────────┴──────────────┐                                │
          ▼                             ▼                                │
     ┌─────────────────┐      ┌───────────────────────┐                  │
-    │ Digital Board    │      │Voice Narration        │                 │
-    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                │
-    │  render)         │      │ audio clock drives     │                │
-    │                  │      │ word-by-word reveal)   │                │
+    │ Digital Board    │      │Voice Narration        │                  │
+    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                 │
+    │  render)         │      │ audio clock drives     │                 │
+    │                  │      │ word-by-word reveal)   │                 │
     └─────────────────┘      └───────────────────────┘                  │
             │                             │                             │
             └──────────────┬──────────────┘                             │
                            ▼                                            │
-                        Student                                         │
+                        Student                                        │
                            │                                            │
                            ▼                                            │
                   ┌───────────────────┐                                 │
-                  │   Answer Engine   │  ANSWER → ESCALATE → PROBE →    │
-                  │ (Q&A lifecycle)   │  MICRO, understanding checks    │
+                  │   Answer Engine    │  ANSWER → ESCALATE → PROBE →   │
+                  │ (Q&A lifecycle)    │  MICRO, understanding checks   │
                   └───────────────────┘◄────────────────────────────────┘
                             │
                             ▼
@@ -203,7 +203,7 @@ Lumina/
 │   └── vite.config.js
 │
 ├── README.md
-└── requirements.txt
+└── 
 ```
 
 > **Note:** `Frontend/package.json` currently declares the package name
@@ -226,6 +226,7 @@ cd Lumina
 ```bash
 cd Backend
 pip install -r requirements.txt
+```
 
 ### 3. Install the frontend
 
@@ -257,14 +258,9 @@ VLLM_API_KEY=EMPTY
 VITE_API_BASE=http://localhost:8000
 ```
 
-> **Never commit a populated `.env`.** `Backend/.gitignore` and
-> `Frontend/.gitignore` already exclude `.env`, but double-check before
-> your first push — and rotate any key that has ever been shared,
-> screenshotted, or uploaded anywhere outside your own machine.
+### 5. (Optional) Start a self-hosted AMD model server
 
-### 5. gitStart a self-hosted AMD model server
-
-fast tier running on your own AMD Instinct
+fast tier running on our own AMD Instinct
 
 ```bash
 /opt/venv/bin/python3.10 -m vllm.entrypoints.openai.api_server \
