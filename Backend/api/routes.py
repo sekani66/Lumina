@@ -36,7 +36,6 @@ LESSON PLANNING ENDPOINTS (lesson_engine.py)
     immediately followed by 2–3 WORKED_EXAMPLE sections and a practice
     section (GUIDED_PRACTICE / INDEPENDENT_PRACTICE).
 
-    This output is passed unchanged as `teaching_script` to
     POST /stream/session/create — streaming_engine.py interprets it as the
     lesson_engine format directly (the field name is kept only for backward
     compatibility; see streaming_engine.py's module docstring).
@@ -487,7 +486,6 @@ async def get_course_prerequisites(payload: PrerequisiteRequest):
                 list_values = [v for v in result.values() if isinstance(v, list)]
                 if len(list_values) == 1:
                     result = list_values[0]
-        print(result)
         return result
     except json.JSONDecodeError:
         raise HTTPException(
@@ -495,7 +493,6 @@ async def get_course_prerequisites(payload: PrerequisiteRequest):
             detail="Failed to parse prerequisite fields. Please retry.",
         )
     except Exception as exc:
-        print(f"get_course_prerequisite Error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -667,9 +664,7 @@ async def lesson_generate(payload: LessonGenerateRequest):
             detail="Lesson engine returned malformed JSON. Please retry.",
         )
     except Exception as exc:
-        print(f"Lesson_generate Error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
-    print(result)
     return result
 
 
@@ -1223,9 +1218,6 @@ async def answer_ask(payload: AnswerSessionRequest):
     )
 
     try:
-        # NOTE: answer_engine.py renamed these two parameters
-        # (active_segment → active_section, teaching_script → lesson).
-        # Request body field names are kept as-is for frontend compatibility.
         result = await handle_answer_session(
             question             = payload.question,
             active_section       = resolved_active_section,
@@ -1279,10 +1271,6 @@ async def answer_ask(payload: AnswerSessionRequest):
             detail="Answer engine returned malformed JSON. Please retry.",
         )
     except Exception as exc:
-        # Was previously print(f"answer_ask Error: {exc}") — the message alone
-        # (e.g. "'str' object has no attribute 'get'") gives no file/line, so
-        # every one of these required manual code review to trace. Log the
-        # full traceback so future occurrences are pinpointable immediately.
         logger.exception("answer_ask Error")
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -1291,7 +1279,6 @@ async def answer_ask(payload: AnswerSessionRequest):
     # RESUME). The envelope is the same event-stream shape as a lesson section
     # so streaming_engine can play it without any special-cased rendering path.
     # No flattening is needed here — just return the orchestrator result.
-    print(result)
     return result
 
 
@@ -1371,8 +1358,6 @@ async def answer_escalate(payload: EscalateRequest):
     _assert_client()
 
     try:
-        # NOTE: answer_engine.py renamed active_segment → active_section and
-        # teaching_script → lesson. Request body field names are unchanged.
         result = await escalate_with_example(
             question             = payload.question,
             active_section       = payload.active_segment,
@@ -1443,9 +1428,6 @@ async def answer_probe(payload: ProbeRequest):
 
     try:
         if payload.confusion_location:
-            # Turn 2 — confusion located; generate a surgical micro-explanation
-            # NOTE: answer_engine.py renamed active_segment → active_section and
-            # teaching_script → lesson. Request body field names are unchanged.
             result = await generate_micro_explanation(
                 confusion_location = payload.confusion_location,
                 question           = payload.question,
