@@ -80,20 +80,20 @@ not just in an LLM's discretion.
          ┌──────────────┴──────────────┐                                │
          ▼                             ▼                                │
     ┌─────────────────┐      ┌───────────────────────┐                  │
-    │ Digital Board    │      │Voice Narration        │                  │
-    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                 │
-    │  render)         │      │ audio clock drives     │                 │
-    │                  │      │ word-by-word reveal)   │                 │
+    │ Digital Board    │      │Voice Narration        │                 │
+    │ (Konva, real-time│      │(OpenAI gpt-4o-mini-tts,│                │
+    │  render)         │      │ audio clock drives     │                │
+    │                  │      │ word-by-word reveal)   │                │
     └─────────────────┘      └───────────────────────┘                  │
             │                             │                             │
             └──────────────┬──────────────┘                             │
                            ▼                                            │
-                        Student                                        │
+                        Student                                         │
                            │                                            │
                            ▼                                            │
                   ┌───────────────────┐                                 │
-                  │   Answer Engine    │  ANSWER → ESCALATE → PROBE →   │
-                  │ (Q&A lifecycle)    │  MICRO, understanding checks   │
+                  │   Answer Engine   │  ANSWER → ESCALATE → PROBE →    │
+                  │ (Q&A lifecycle)   │  MICRO, understanding checks    │
                   └───────────────────┘◄────────────────────────────────┘
                             │
                             ▼
@@ -203,7 +203,7 @@ Lumina/
 │   └── vite.config.js
 │
 ├── README.md
-└── 
+└── requirements.txt
 ```
 
 > **Note:** `Frontend/package.json` currently declares the package name
