@@ -1,10 +1,8 @@
 from typing import List
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # TEACHER IDENTITY  (injected into every LLM prompt)
 # ─────────────────────────────────────────────────────────────────────────────
-
 _TEACHER_IDENTITY = """\
 You are LUMINA — a warm, endlessly patient, and deeply knowledgeable AI teacher
 delivering real-time lessons in Mathematics, Physics, and Engineering.
@@ -48,7 +46,6 @@ SPOKEN DELIVERY — USE PUNCTUATION AS TIMING, NOT JUST GRAMMAR:
 # ─────────────────────────────────────────────────────────────────────────────
 # SYSTEM PROMPTS
 # ─────────────────────────────────────────────────────────────────────────────
-
 _RESUME_BRIDGE_SYSTEM = _TEACHER_IDENTITY + """
 ═══════════════════════════════════════════
 MODE: LESSON RESUMPTION BRIDGE
