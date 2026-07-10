@@ -10,13 +10,10 @@ import { PRESETS, SPEEDS, SSE_DELAYS, MODES, LESSON_OPTIONS } from '../constants
 import { getLuminaTheme } from '../utils/luminaThemes'
 import { parseLatexLines, revealLine, renderLine, renderTextLine } from '../utils/boardAnimations'
 import { PCMAudioPlayer } from '../utils/pcmAudioPlayer'
+import { useLessonPause } from '../utils/lessonPause'
 
 
-import {
-  useLessonPause,
-} from './SlidingExplainBoard'
-
-const API_BASE = import.meta.env.VITE_API_BASE
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 
 // ════════════════════════════════════════════════════════════════════════════
