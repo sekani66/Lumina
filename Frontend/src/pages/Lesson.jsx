@@ -79,13 +79,18 @@ export default function LessonPage({ onBack, courseData }) {
 
   // ── Section label (drives practice-box color theme via getLuminaTheme) ───
   const [luminaLabel, setLuminaLabel] = useState('LUMINA')
-  const [luminaText,  setLuminaText]  = useState('')
 
   // ── Explain board (mid-lesson questions) ────────────────────────────────
   const [explainVisible,     setExplainVisible]     = useState(false)
   const [currentQuestion,    setCurrentQuestion]    = useState('')
   const [isAwaitingPractice, setIsAwaitingPractice] = useState(false)
   const [practiceInput,      setPracticeInput]      = useState('')
+  // Holds the AWAIT_RESPONSE prompt text (e.g. "Which number is the slope,
+  // and which is the y-intercept?") so it can be shown as the placeholder
+  // on the practice-answer input below — this is the only TEACHER_SAYS-
+  // adjacent content still surfaced to the learner now that the narration
+  // panel has been removed.
+  const [practicePrompt,     setPracticePrompt]     = useState('')
   const { triggerResume } = useLessonPause()
 
   // ── Raised hand (mirrors backend streaming_engine.py hand-raise flow) ────
@@ -130,6 +135,10 @@ export default function LessonPage({ onBack, courseData }) {
   const [explainClipPcts,     setExplainClipPcts]     = useState([])
   const [explainInput,        setExplainInput]        = useState('')
   const [explainLoading,      setExplainLoading]      = useState(false)
+  // Holds the answer-stream's AWAIT_RESPONSE probe text (e.g. "What is 12
+  // minus 5?"), shown as the placeholder on the Q&A follow-up input below
+  // once LEARNER_CHECKPOINT fires — mirrors practicePrompt on the left.
+  const [explainPrompt,       setExplainPrompt]       = useState('')
 
   // ── Left board refs ───────────────────────────────────────────────────────
   const cleanupRef          = useRef([])
@@ -348,6 +357,7 @@ export default function LessonPage({ onBack, courseData }) {
     explainWriteBufferRef.current = ''
     setExplainLoading(false)
     setExplainInput('')
+    setExplainPrompt('')
   }
 
   // ── resetExplainBoard ─────────────────────────────────────────────────────
@@ -386,7 +396,7 @@ export default function LessonPage({ onBack, courseData }) {
     cleanupRef.current.forEach(fn => fn())
     cleanupRef.current = []
     if (esRef.current) { esRef.current.close(); esRef.current = null }
-    setLuminaText(''); setLuminaLabel('LUMINA')
+    setLuminaLabel('LUMINA')
     setLines([])
     setLineContents([])
     setBoardAnnotations({})
@@ -404,6 +414,7 @@ export default function LessonPage({ onBack, courseData }) {
     setVisibleExplanations(0)
     setIsAwaitingPractice(false)
     setPracticeInput('')
+    setPracticePrompt('')
     setHandState('idle')
     setHandQuestionInput('')
     setQaState({
@@ -467,7 +478,6 @@ export default function LessonPage({ onBack, courseData }) {
           setLines(prev => [...prev, { kind: 'spacer' }])
           setClipPcts(prev => [...prev, 100])
           setVisibleCount(spacerIdx + 1)
-          setLuminaText('')
           await new Promise(r => setTimeout(r, 600))
         }
         else if (data.event === 'BOARD_WRITE') {
@@ -566,13 +576,13 @@ export default function LessonPage({ onBack, courseData }) {
           const content = data.payload?.content || ''
           const line = renderLine(content) || renderTextLine(content)
           if (line) await pushAndReveal(line, null, content)
-          else setLuminaText(prev => prev + (prev ? ' ' : '') + content)
+          // else: content wasn't renderable as a board line — previously
+          // fell back to the narration panel, which no longer exists.
         }
         else if (data.event === 'TEACHER_SAYS') {
-          if (data.payload?.role === 'bridge' || data.payload?.role === 'transition') {
-            setLuminaLabel('LUMINA')
-          }
-          setLuminaText(prev => prev + (prev ? ' ' : '') + data.payload.content)
+          // Narration panel removed — TEACHER_SAYS no longer renders
+          // anywhere. Audio still plays via TEACHER_AUDIO_CHUNK below;
+          // this event is otherwise a no-op now.
         }
         else if (data.event === 'TEACHER_AUDIO_CHUNK') {
           getAudioPlayer().enqueueChunk(data.payload?.data, data.payload?.sample_rate)
@@ -583,7 +593,7 @@ export default function LessonPage({ onBack, courseData }) {
           console.warn('Teacher audio error:', data.payload?.message)
         }
         else if (data.event === 'RESUME_BRIDGE') {
-          if (data.payload?.phase === 'begin') { setLuminaLabel('LUMINA'); setLuminaText('') }
+          // No-op now — was only used to reset the narration panel.
         }
         else if (data.event === 'STEP_PAUSE') {
           await new Promise(r => setTimeout(r, data.payload?.delay_ms || 500))
@@ -606,7 +616,7 @@ export default function LessonPage({ onBack, courseData }) {
           setIsAwaitingPractice(true)
           setPlaying(false)
           setLuminaLabel('PRACTICE')
-          setLuminaText(data.payload?.content || 'Your turn. Try to solve this.')
+          setPracticePrompt(data.payload?.content || 'Your turn. Try to solve this.')
           await new Promise(r => setTimeout(r, 1500))
         }
         else if (data.event === 'LESSON_PAUSE') {
@@ -867,13 +877,13 @@ export default function LessonPage({ onBack, courseData }) {
           const content = data.payload?.content || ''
           const line = renderLine(content) || renderTextLine(content)
           if (line) await pushAndRevealRight(line, content)
-          else setLuminaText(prev => prev + (prev ? ' ' : '') + content)
+          // else: content wasn't renderable as a board line — previously
+          // fell back to the narration panel, which no longer exists.
         }
 
         // ── Narration ───────────────────────────────────────────────────────
         else if (data.event === 'TEACHER_SAYS') {
-          setLuminaLabel('LUMINA')
-          setLuminaText(prev => prev + (prev ? ' ' : '') + data.payload.content)
+          // Narration panel removed — no longer rendered anywhere.
         }
         else if (data.event === 'TEACHER_AUDIO_CHUNK') {
           getAudioPlayer().enqueueChunk(data.payload?.data, data.payload?.sample_rate)
@@ -897,7 +907,7 @@ export default function LessonPage({ onBack, courseData }) {
           // by-design closure isn't picked up by the browser's EventSource
           // as a dropped connection and reported as an error.
           setLuminaLabel('PRACTICE')
-          setLuminaText(data.payload?.content || 'Does that make sense? Try it yourself.')
+          setExplainPrompt(data.payload?.content || 'Does that make sense? Try it yourself.')
           await new Promise(r => setTimeout(r, 800))
           es.close(); answerEsRef.current = null
           setExplainLoading(false)
@@ -1045,7 +1055,7 @@ export default function LessonPage({ onBack, courseData }) {
     const attempt = practiceInput.trim()
     setPracticeInput('')
     setIsAwaitingPractice(false)
-    setLuminaText('')
+    setPracticePrompt('')
     triggerResume()
     setPlaying(true)
     openLessonSSE(sessionIdRef.current, true, {
@@ -1087,6 +1097,7 @@ export default function LessonPage({ onBack, courseData }) {
     if (explainLoading) return
     if (qaState.conversationHistory.length === 0) pushExplainDivider(learnerInput)
     setExplainLoading(true)
+    setExplainPrompt('')
     try {
       const result = await handleAskBackend(learnerInput)
       if (!result || result.resumed) {
@@ -1837,47 +1848,6 @@ export default function LessonPage({ onBack, courseData }) {
           </div>
           {/* ── end split chalkboard ──────────────────────────────────── */}
 
-          {luminaText && sourceMode === 'lesson' && (
-            <div style={{
-              marginTop: 10, padding: '12px 16px', borderRadius: 8,
-              background: luminaBgColor, border: `1px solid ${luminaBorderColor}`,
-              display: 'flex', alignItems: 'flex-start', gap: 12,
-              transition: 'background 0.35s ease, border-color 0.35s ease',
-            }}>
-              <span style={{
-                fontSize: 10, fontWeight: 700,
-                color: luminaLabelColor, letterSpacing: '0.14em',
-                flexShrink: 0, paddingTop: 3, textTransform: 'uppercase',
-                transition: 'color 0.35s ease',
-              }}>
-                {luminaLabel}
-              </span>
-              <p style={{
-                margin: 0, fontFamily: "'Crimson Pro', Georgia, serif",
-                fontSize: 15, lineHeight: 1.65,
-                color: 'rgba(226,244,255,0.78)', letterSpacing: '0.012em',
-                flex: 1, minHeight: '1.65em',
-              }}>
-                {luminaText}
-                {playing && (
-                  <span style={{
-                    display: 'inline-block', width: 1.5, height: '0.9em',
-                    background: luminaLabelColor, verticalAlign: 'text-bottom',
-                    marginLeft: 2, borderRadius: 1,
-                    animation: 'blink 0.75s ease-in-out infinite alternate',
-                  }} />
-                )}
-              </p>
-              <button
-                onClick={() => setLuminaText('')}
-                style={{ background: 'none', border: 'none', color: 'rgba(226,244,255,0.22)', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', padding: '2px 0' }}
-                title="Dismiss"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          )}
-
           {/* ── Raised hand — persistent, deliberately visible whether up or
                down so its state is never ambiguous. Hidden alongside the
                other input controls during AWAIT_RESPONSE / active Q&A, same
@@ -1895,7 +1865,7 @@ export default function LessonPage({ onBack, courseData }) {
                 }
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
                   cursor: handState === 'active' ? 'default' : 'pointer',
                   background:
                     handState === 'active'       ? 'rgba(255,184,92,0.22)'
@@ -1969,7 +1939,7 @@ export default function LessonPage({ onBack, courseData }) {
             </div>
           )}
 
-          {isAwaitingPractice && sourceMode === 'lesson' && (
+          {isAwaitingPractice && handState === 'idle' && sourceMode === 'lesson' && (
             <div style={{
               marginTop: 10, padding: '8px 10px 8px 16px', borderRadius: 8,
               background: luminaBgColor, border: `1px solid ${luminaBorderColor}`,
@@ -1983,7 +1953,7 @@ export default function LessonPage({ onBack, courseData }) {
                 onKeyDown={e => {
                   if (e.key === 'Enter') { e.preventDefault(); handlePracticeSubmit() }
                 }}
-                placeholder="Type your answer here…"
+                placeholder={practicePrompt || 'Type your answer here…'}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   color: 'rgba(226,244,255,0.90)',
@@ -2034,7 +2004,7 @@ export default function LessonPage({ onBack, courseData }) {
                     if (v) { setExplainInput(''); handleExplainQuestion(v) }
                   }
                 }}
-                placeholder={explainLoading ? 'Explaining…' : 'Got it / Still confused about…'}
+                placeholder={explainLoading ? 'Explaining…' : (explainPrompt || 'Got it / Still confused about…')}
                 disabled={explainLoading}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
