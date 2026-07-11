@@ -27,6 +27,12 @@ not just in an LLM's discretion.
 
 ---
 
+## Documentation
+
+A detailed description of the system architecture, teaching pipeline, AMD infrastructure, and design decisions can be found here:
+
+[Lumina Documentation](docs/Lumina.pdf)
+
 ## Features
 
 - PDF extraction into a structured lesson source (PyMuPDF span/heading/table analysis)
