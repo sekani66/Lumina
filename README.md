@@ -183,6 +183,9 @@ Lumina/
 │   ├── main.py                     # FastAPI app + CORS
 │   └── requirements.txt
 │
+├── docs/
+|  └── Lumina.pdf                  # Lumina Documentation
+|                
 ├── Frontend/
 │   ├── src/
 │   │   ├── components/
@@ -327,23 +330,3 @@ in the docstring at the top of `Backend/api/routes.py`.
 | | `POST /answer/escalate` | Re-explain with a new teaching approach |
 | | `POST /answer/probe` | Locate a learner's exact confusion point |
 | | `GET /stream/answer` | SSE replay of a stored answer envelope |
-
----
-
-## Known Gaps / Follow-ups
-
-- **`python-dotenv` is imported but not in `requirements.txt`** — add it, or
-  `pip install` fails to surface the missing dependency until runtime.
-- **No test suite** — no `pytest`/`vitest` setup for either side yet.
-- **No database** — sign-in, course, and lesson-progress state have no
-  persistence layer wired up yet; streaming sessions currently live in
-  memory only (`Backend/pipelines/streaming_engine.py`) and are lost on
-  restart.
-- **No auth implementation** — `SignIn.jsx` / `SignUp.jsx` exist on the
-  frontend, but there's no corresponding auth flow (JWT/session/OAuth) on
-  the backend yet.
-- **`Backend/config/` and `Backend/models/`** are present but currently
-  empty — worth documenting their intended purpose or removing.
-- **License** — none specified yet.
-
----
