@@ -6,7 +6,7 @@ export const FEATURES = [
         </svg>
     ),
     title: 'Real-Time AI Teaching',
-    body: 'Lessons delivered live — not prerecorded. The AI explains, pauses, adapts and responds as you learn, just like a private tutor beside you.',
+    body: 'Lessons delivered live, not prerecorded. The AI explains, pauses, adapts and responds as you learn, just like a private tutor beside you.',
     },
     {
     icon: (
@@ -27,7 +27,7 @@ export const FEATURES = [
         </svg>
     ),
     title: 'Infinite Patience',
-    body: 'Ask the same question ten different ways. Lumina explains at every level — from first principles to advanced derivations — without ever losing patience.',
+    body: 'Ask the same question ten different ways. Lumina explains at every level, from first principles to advanced derivations without ever losing patience.',
     },
     {
     icon: (
@@ -52,7 +52,7 @@ export const FEATURES = [
         </svg>
     ),
     title: 'Built for STEM',
-    body: 'Deep curriculum coverage across Mathematics, Physics and Engineering — from foundational algebra to graduate-level field theory.',
+    body: 'Deep curriculum coverage across Mathematics, Physics from foundational algebra to graduate-level field theory.',
     },
     {
     icon: (
@@ -68,12 +68,12 @@ export const FEATURES = [
 ]
 
 export const STEPS = [
-    { n: '01', label: 'Ask or choose a topic' },
-    { n: '02', label: 'Lumina teaches live on the board' },
-    { n: '03', label: 'Interrupt, question, explore' },
+    { n: '01', label: 'Choose your topic' },
+    { n: '02', label: 'Lumina teaches you live on the board' },
+    { n: '03', label: 'Interrupt a lesson, ask question, explore' },
     { n: '04', label: 'Gaps filled. Knowledge grows.' },
 ]
 
-export const SUBJECTS = ['Mathematics', 'Physics', 'Engineering', 'More soon…']
+export const SUBJECTS = ['Mathematics', 'Physic Sciences', 'More soon…']
 
 export const NAV_LINKS = ['Features', 'How it works', 'Subjects', 'Pricing']

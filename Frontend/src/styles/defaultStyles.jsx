@@ -167,6 +167,7 @@ export const Styles = {
         boxShadow: `0 0 0 1px rgba(99,200,255,0.08), 0 40px 120px rgba(0,0,0,0.7), 0 0 80px rgba(99,200,255,0.06)`,
         overflow: 'hidden',
         animation: 'fadeSlideUp 0.8s ease 0.6s both',
+        marginTop: 60,
     },
     scanLine: {
         position: 'absolute', left: 0, right: 0, height: 2,

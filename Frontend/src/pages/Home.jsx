@@ -93,7 +93,6 @@ export default function HomePage({ onNavigate }) {
       {/* Top Navigation */}
       <nav style={S.nav}>
         <div style={S.navLogo}>
-          <div style={S.logoMark}><span style={S.logoLetter}>L</span></div>
           <span style={S.logoWord}>Lumina</span>
         </div>
 
@@ -105,9 +104,6 @@ export default function HomePage({ onNavigate }) {
         </div>
 
         <div style={S.navRight}>
-          <div style={S.apiPill}>
-            <Icons.Sparkles /> Lumina AI Active
-          </div>
           <button style={S.profileBtn} title="Profile Menu">
             <Icons.User />
           </button>
@@ -167,41 +163,6 @@ export default function HomePage({ onNavigate }) {
                   78% Mastered
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* Hub & AI Section */}
-          <section style={S.topGrid}>
-            <div style={S.studentHub}>
-              <div style={S.studentAvatar}>
-                {STUDENT.name[0]}
-              </div>
-              <h3 style={S.studentName}>{STUDENT.name}</h3>
-              <div style={S.studentMeta}>{STUDENT.role}</div>
-
-              <div style={S.studentStats}>
-                <div style={S.statItem}>
-                  <strong>{STUDENT.level}</strong>
-                  <span>Current Level</span>
-                </div>
-                <div style={S.statDivider} />
-                <div style={S.statItem}>
-                  <strong>{STUDENT.joined}</strong>
-                  <span>Joined</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={S.aiPanel}>
-              <div style={S.aiTitle}>
-                <Icons.Sparkles /> Lumina AI Recommendations
-              </div>
-              <p style={S.aiText}>Based on your recent activity, here is what you should focus on next:</p>
-              <ul style={S.aiSuggestions}>
-                <li><span style={{ color: '#63c8ff', marginRight: 8 }}>→</span>Continue Mathematics to finish your module.</li>
-                <li><span style={{ color: '#a78bfa', marginRight: 8 }}>→</span>Review Physics: Newtonian Mechanics.</li>
-                <li><span style={{ color: '#34d399', marginRight: 8 }}>→</span>Start Engineering: Circuit Fundamentals.</li>
-              </ul>
             </div>
           </section>
 

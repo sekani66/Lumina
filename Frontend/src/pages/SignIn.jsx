@@ -15,6 +15,17 @@ import {
 } from '../styles/icons';
 import { PARTICLES } from '../constants/floatingParticles';
 
+const STRIP_LINES = [
+  { text: 'LESSON · Quadratic Equations', accent: false },
+  { text: '2x² + 6x + 4 = 0',            big: true     },
+  { text: 'STEP 01: divide by 2',        accent: false },
+  { text: 'x² + 3x + 2 = 0',             big: true, accent: true },
+  { text: 'STEP 02: factor',             accent: false },
+  { text: '(x + 1)(x + 2) = 0',          big: true     },
+  { text: 'STEP 3: solutions',           accent: false },
+  {text: 'x = - 1 or x = -2',            big: true     },
+]
+
 export default function SignInPage({ onNavigate }) {
     const [form,      setForm]      = useState({ email: '', password: '' })
     const [showPass,  setShowPass]  = useState(false)
@@ -52,10 +63,6 @@ export default function SignInPage({ onNavigate }) {
                     }}>{p.char}</span>
                 ))}
             </div>
-            {/* Back link */}
-            <button className="si-back" onClick={() => onNavigate('default')} style={S.backLink}>
-                <ArrowLeft /> Back to Lumina
-            </button>
 
         {/* Split layout  */}
         <div style={{
@@ -67,26 +74,33 @@ export default function SignInPage({ onNavigate }) {
         {/* Left panel branding  */}
         <div style={S.leftPanel}>
             <div style={S.leftInner}>
-                {/* Logo */}
-                <div style={S.logoRow}>
-                <div style={S.logoMark}>
-                <span style={S.logoLetter}>L</span>
-            </div>
-            <span style={S.logoWord}>Lumina</span>
-        </div>
+                <h2 style={S.leftHeading}>
+                    Every lesson shaped for<br />
+                   <span style={S.leftAccent}>YOU ALONE.</span>
+                </h2>
 
-        {/* Tagline */}
-            <h2 style={S.leftHeading}>
-                Every lesson<br/>
-                <em style={S.leftEm}>shaped</em> for<br />
-                <span style={S.leftAccent}>you alone.</span>
-            </h2>
-            <p style={S.leftSub}>
-                Sign in to resume your personalised learning journey —
-                right where your AI teacher left off.
-            </p>
+            {/* Board preview strip */}
+            <div style={S.boardStrip}>
+              {STRIP_LINES.map((line, i) => (
+                <div key={i} style={{
+                  ...S.stripLine,
+                  opacity: 0,
+                  animation: `fadeUp 0.45s ease ${i * 1.05 + 0.4}s forwards`,
+                  color:         line.accent ? '#63c8ff' : 'rgba(226,244,255,0.55)',
+                  fontSize:      line.big    ? 17 : 11,
+                  fontFamily:    line.big    ? '"Crimson Pro", serif' : '"DM Mono", monospace',
+                  letterSpacing: line.big    ? 0 : '0.06em',
+                  borderLeft:    line.big    ? '2px solid rgba(99,200,255,0.35)' : 'none',
+                  paddingLeft:   line.big    ? 10 : 0,
+                }}>{line.text}</div>
+              ))}
+              <div style={S.stripCursor} />
             </div>
+
+          </div>
+            
         </div>
+        
 
         {/* Right panel — form */}
         <div style={S.rightPanel}>
@@ -162,7 +176,7 @@ export default function SignInPage({ onNavigate }) {
                     >
                     {
                         loading? <><Spinner /> Signing in…</> 
-                        : <>Sign in to Lumina <span style={{ fontSize: 18 }}>→</span></>
+                        : <>Sign in <span style={{ fontSize: 18 }}>→</span></>
                     }
                 </button>
             </form>

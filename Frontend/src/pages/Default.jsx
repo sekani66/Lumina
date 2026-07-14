@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react';
 
-import { PARTICLES } from '../constants/floatingParticles'
-import { FEATURES, STEPS, SUBJECTS, NAV_LINKS } from '../constants/defaultPageConstants'
-import { LESSON_OPTIONS } from '../constants/lessoPageConstants'
-import { Styles } from '../styles/defaultStyles'
+import { PARTICLES } from '../constants/floatingParticles';
+import { FEATURES, STEPS, SUBJECTS, NAV_LINKS } from '../utils/defaultPageConstants';
+import { LESSON_OPTIONS } from '../constants/lessonOptions';
+import { Styles } from '../styles/defaultStyles';
 
 
 export default function DefaultPage({ onNavigate }) {
@@ -126,11 +126,7 @@ export default function DefaultPage({ onNavigate }) {
       }}>
         {/* Logo */}
         <div style={Styles.logo}>
-          <div style={Styles.logoMark}>
-            <span style={Styles.logoMarkInner}>L</span>
-          </div>
           <span style={Styles.logoText}>Lumina</span>
-          <span style={Styles.logoBadge}>BETA</span>
         </div>
 
         {/* Desktop links */}
@@ -150,11 +146,6 @@ export default function DefaultPage({ onNavigate }) {
             style={Styles.navSignIn}
             onClick={() => onNavigate('signin')}
           >Sign in</button>
-          <button
-            className="lumina-cta"
-            style={{ ...Styles.navSignUp, transition: 'all 0.2s ease' }}
-            onClick={() => onNavigate('board')}
-          >Get started free</button>
         </div>
 
         {/* Mobile hamburger */}
@@ -180,62 +171,18 @@ export default function DefaultPage({ onNavigate }) {
           ))}
           <div style={{ height: 1, background: 'rgba(99,200,255,0.1)', margin: '8px 0' }} />
           <button style={{ ...Styles.navSignIn, width: '100%', justifyContent: 'center' }} onClick={() => onNavigate('signin')}>Sign in</button>
-          <button
-            className="lumina-cta"
-            style={{ ...Styles.navSignUp, width: '100%', justifyContent: 'center', transition: 'all 0.2s' }}
-            onClick={() => onNavigate('board')}
-          >Get started free</button>
         </div>
       )}
 
       {/* HERO */}
       <section style={Styles.hero}>
 
-        {/* Live badge */}
-        <div style={Styles.heroBadge}>
-          <span style={Styles.badgePulse} />
-          <span style={{ position: 'relative', zIndex: 1 }}>AI Teaching — Live, Not Prerecorded</span>
-        </div>
-
         {/* Headline */}
         <h1 style={Styles.heroH1}>
-          The AI that<br />
-          <em style={Styles.heroEm}>teaches</em>{' '}
-          <span style={Styles.heroAccent}>you</span>
-          <br />in real time
+          Learn with an <br />
+          <span style={Styles.heroAccent}> AI Teacher</span>
+          <br />in a live lesson
         </h1>
-
-        {/* Sub */}
-        <p style={Styles.heroSub}>
-          Lumina is an AI teaching system that delivers live, structured lessons —
-          responding to your questions, filling knowledge gaps, and adapting to
-          your pace. Not a chatbot. Not a homework solver. A teacher.
-        </p>
-
-        {/* CTAs */}
-        <div style={Styles.heroCtas}>
-          <button
-            className="lumina-cta"
-            style={{ ...Styles.ctaPrimary, transition: 'all 0.2s ease', animation: 'glow 3s ease-in-out infinite' }}
-            onClick={() => onNavigate('board')}
-          >
-            Start a free lesson
-            <span style={{ fontSize: 20 }}>→</span>
-          </button>
-          <button className="secondary-btn" style={{ ...Styles.ctaSecondary, transition: 'all 0.2s ease' }}>
-            Watch how it works
-          </button>
-        </div>
-
-        {/* Social proof row */}
-        <div style={Styles.socialProof}>
-          <div style={Styles.proofAvatars}>
-            {['#b0d4ff','#aee8d0','#f0d9b0','#e0b0d4','#c8e0f0'].map((c, i) => (
-              <div key={i} style={{ ...Styles.proofAvatar, background: c, marginLeft: i ? -10 : 0 }} />
-            ))}
-          </div>
-          <span style={Styles.proofText}>Trusted by <strong>2,400+</strong> students & educators</span>
-        </div>
 
         {/* Board preview window */}
         <div style={Styles.boardPreview}>
@@ -244,8 +191,7 @@ export default function DefaultPage({ onNavigate }) {
 
           <div style={Styles.boardInner}>
             <div style={Styles.boardHeader}>
-              <span style={Styles.boardTitle}>Lumina · Lesson Board</span>
-              <span style={Styles.boardLive}>● LIVE</span>
+              <span style={Styles.boardTitle}>Lesson Board</span>
             </div>
             <div style={Styles.boardScreen}>
               {previewLines.map((line, i) => (
@@ -366,33 +312,22 @@ export default function DefaultPage({ onNavigate }) {
       <section style={Styles.ctaBanner}>
         <div style={Styles.ctaBannerGlow} />
         <p style={Styles.ctaBannerEye}>Ready when you are</p>
-        <h2 style={Styles.ctaBannerH}>Your first lesson is free.<br />No card needed.</h2>
-        <button
-          className="lumina-cta"
-          style={{ ...Styles.ctaPrimary, fontSize: 18, padding: '18px 52px', transition: 'all 0.2s ease' }}
-          onClick={() => onNavigate('board')}
-        >
-          Open the Lesson Board →
-        </button>
       </section>
 
       {/* FOOTER */}
       <footer style={Styles.footer}>
         <div style={Styles.footerLogo}>
-          <div style={{ ...Styles.logoMark, width: 28, height: 28, fontSize: 14 }}>
-            <span style={Styles.logoMarkInner}>L</span>
-          </div>
           <span style={{ ...Styles.logoText, fontSize: 16 }}>Lumina</span>
         </div>
         <p style={Styles.footerSub}>
-          Real-time AI teaching for mathematics, physics and engineering.
+          Real  time AI teaching for mathematics and physical sciences.
         </p>
         <div style={Styles.footerLinks}>
           {['Privacy', 'Terms', 'Contact', 'Docs'].map(l => (
             <a key={l} href="#" className="nav-link" style={Styles.footerLink}>{l}</a>
           ))}
         </div>
-        <p style={Styles.footerCopy}>© 2025 Lumina Education Technologies. All rights reserved.</p>
+        <p style={Styles.footerCopy}>© 2026 Lumina Education Technologies. All rights reserved.</p>
       </footer>
     </div>
   )

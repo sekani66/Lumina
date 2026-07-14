@@ -329,7 +329,7 @@ export default function CreateCourse({ onNavigate, onBack }) {
               <label style={S.label}>Course Topic</label>
               <input
                 className="cc-input"
-                placeholder="e.g. Grade 12 Mathematics, Quantum Mechanics…"
+                placeholder="e.g. Linear Equations, Calculus…"
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 required
@@ -348,7 +348,7 @@ export default function CreateCourse({ onNavigate, onBack }) {
               <label style={S.label}>Primary Goal</label>
               <input
                 className="cc-input"
-                placeholder="e.g. Pass my finals next month, understand architectural application…"
+                placeholder="e.g. Prepare for exams, solid understanding…"
                 value={goal}
                 onChange={e => setGoal(e.target.value)}
                 required

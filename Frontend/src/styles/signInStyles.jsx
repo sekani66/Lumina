@@ -48,6 +48,14 @@ export const S = {
     display: 'flex', alignItems: 'center', gap: 6,
     transition: 'color 0.2s', padding: '6px 0',
   },
+  boardStrip: {
+    background: 'rgba(7,11,20,0.55)',
+    border: '1px solid rgba(99,200,255,0.1)',
+    borderRadius: 12,
+    padding: '16px 20px 40px',
+    display: 'flex', flexDirection: 'column', gap: 5,
+    marginTop: 20, overflow: 'hidden', position: 'relative',
+  },
 
   // ── Split shell ──
   shell: {

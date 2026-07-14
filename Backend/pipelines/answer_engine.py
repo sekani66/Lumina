@@ -1,5 +1,5 @@
 """
-Lumina Answer Engine  (aligned with lesson_engine shape)
+Lumina Answer Engine  (aligned with lesson_engine shape) 
 ═══════════════════════════════════════════════════════════════════════════════
 PURPOSE
   The real-time teaching layer that turns learner interruptions into genuine
