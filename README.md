@@ -1,6 +1,6 @@
 # Lumina – AI Interactive Teacher
 
-> Lumina is a live AI teacher that transforms a learner's own material —
+> Lumina is a live AI teacher that transforms a learner's own material
 > textbook chapter, lecture notes, or study guide — into a structured,
 > one-on-one lesson. Rather than waiting for students to ask questions, it
 > teaches proactively: explaining concepts on a live whiteboard while
@@ -214,10 +214,6 @@ Lumina/
 ├── requirements.txt
 └── README.md
 ```
-
-> **Note:** `Frontend/package.json` currently declares the package name
-> `math-annotator` — a leftover from an earlier iteration of the project.
-> Harmless, but worth renaming to `lumina-frontend` (or similar) for clarity.
 
 ---
 

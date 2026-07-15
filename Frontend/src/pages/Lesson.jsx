@@ -1364,19 +1364,11 @@ export default function LessonPage({ onBack, courseData }) {
             <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: '6px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             </span>
-            Back to Lumina
+            Back
           </button>
           <div style={S.headerDivider} />
           <span style={S.headerTitle}>
             {courseData?.courseDetails?.topic || 'Interactive Lesson Board'}
-          </span>
-          <span style={{
-            ...S.apiBadge,
-            color:       backendOk === true  ? '#63c8ff' : backendOk === false ? '#f06e6e' : 'rgba(226,244,255,0.55)',
-            borderColor: backendOk === true  ? 'rgba(99,200,255,0.3)' : backendOk === false ? 'rgba(240,110,110,0.3)' : 'rgba(226,244,255,0.1)',
-            background:  backendOk === true  ? 'rgba(99,200,255,0.05)' : backendOk === false ? 'rgba(240,110,110,0.05)' : 'transparent',
-          }}>
-            {backendOk === true ? '● LUMINA' : backendOk === false ? '○ LUMINA' : '· · ·'}
           </span>
         </div>
       </header>

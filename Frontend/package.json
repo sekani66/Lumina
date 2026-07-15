@@ -1,7 +1,7 @@
 {
-  "name": "math-annotator",
+  "name": "Lumina",
   "version": "1.0.0",
-  "description": "Real-time handwriting animation for math, physics, and engineering equations",
+  "description": "Real time AI teaching for mathematics and physical sciences.",
   "private": true,
   "dependencies": {
     "katex": "^0.16.9",

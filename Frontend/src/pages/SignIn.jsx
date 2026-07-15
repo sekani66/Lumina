@@ -197,7 +197,7 @@ export default function SignInPage({ onNavigate }) {
                     ].map(({ Icon, label }) => (
                         <button key={label} className="si-social" style={S.socialIconBtn}
                             aria-label={label}
-                            onClick={() => onNavigate('lesson')}>
+                            onClick={() => onNavigate('home')}>
                                 <Icon />
                         </button>
                     ))}

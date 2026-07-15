@@ -63,12 +63,6 @@ const COURSES = [
     description: 'Understanding forces, mass, and acceleration through practical real-world simulations.',
     tags: ['Dynamics', 'Forces'],
   },
-  {
-    id: 3, subject: 'Engineering', topic: 'Circuit Fundamentals',
-    color: '#34d399', progress: 0, sessions: 0, lastActive: 'Never',
-    description: 'An introduction to voltage, current, resistance, and basic circuit diagramming.',
-    tags: ['Electronics', 'Basics'],
-  }
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
