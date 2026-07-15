@@ -13,8 +13,8 @@
 ## Overview
 
 Students today are drowning in study material while starving for
-understanding. Access to content has never been greater — endless videos,
-courses, PDFs, AI chatbots, homework solvers — and yet millions of learners
+understanding. Access to content has never been greater endless videos,
+courses, PDFs, AI chatbots, homework solvers and yet millions of learners
 still fail to master what they're taught. The bottleneck was never
 availability. It's responsiveness.
 
@@ -22,7 +22,7 @@ Lumina embeds pedagogy directly into software instead of relying on a
 bigger model or a cleverer prompt. It's a teaching engine that plans a
 lesson, delivers it on a synchronized whiteboard + voice, checks
 understanding at every step, and re-explains with a different pedagogical
-approach when a learner is stuck — with the teaching logic living in code,
+approach when a learner is stuck with the teaching logic living in code,
 not just in an LLM's discretion.
 
 ---
@@ -127,8 +127,8 @@ with an LLM-generated bridge phrase rather than a jump cut.
 - React 18 (function components, hooks)
 - Vite
 - `react-router-dom`
-- `react-konva` / `konva` — whiteboard rendering
-- KaTeX — math notation
+- `react-konva` / `konva` whiteboard rendering
+- KaTeX math notation
 - Plain CSS + JS style objects (no CSS framework)
 
 ### Backend
@@ -143,10 +143,10 @@ with an LLM-generated bridge phrase rather than a jump cut.
 - Fast tier — self-hosted **Qwen3-14B** on vLLM (AMD Instinct GPU), used on
   every learner turn (answer grading, escalation decisions) where a few
   hundred milliseconds of latency matters
-- Reasoning tier — **Qwen 3.7 Plus** on Fireworks AI's MI300X
+- Reasoning tier **Qwen 3.7 Plus** on Fireworks AI's MI300X
   infrastructure, used for lesson planning and harder in-lesson
   explanations where extra "thinking" time is worth spending
-- **gpt-4o-mini-tts** (OpenAI) — real-time streamed voice narration; the
+- **gpt-4o-mini-tts** (OpenAI) real-time streamed voice narration; the
   audio byte-stream itself drives word-reveal timing instead of a fixed
   per-word delay
 
