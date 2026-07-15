@@ -196,8 +196,8 @@ Lumina/
 │   │   │   ├── SignIn.jsx / SignUp.jsx
 │   │   │   ├── Home.jsx
 │   │   │   ├── createCourse.jsx    # 3-step course creation flow
-│   │   │   ├── Lesson.jsx          # board + voice streaming lesson player
-│   │   │   └── SlidingExplainBoard.jsx
+│   │   │   └── Lesson.jsx          # board + voice streaming lesson player
+│   │   │   
 │   │   ├── styles/                 # CSS + JS style-object files
 │   │   ├── utils/
 │   │   │   ├── boardAnimations.jsx
